@@ -18,5 +18,15 @@
   - representation des UC principaux et des UC interne les relations entre eux avec extend et include.
   - representation du diagramme de classe, des diferentes classe qu'on peut avoir leur attributs leur relations 
     et multiplicite.
+
+  - Création des scripts d'initialisation de base de données relationnelle avec contraintes d'intégrité, clés étrangères
+    et vérifications (`sql/schema.sql` pour PostgreSQL et `sql/schema_sqlite.sql` pour SQLite).
+
 - **Difficultés / Obstacles**
   - il y'a beaucoup trop d'informations à prendre en compte.
+
+  - il n'ya pas trop de difficulte pour postgres et pour sqlite c'est presque la meme chose juste quelques changement
+    comme VARCHAR qui devient TEXT et SERIAL qui devient AUTOINCREMENT.
+
+
+  
