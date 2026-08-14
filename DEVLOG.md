@@ -17,6 +17,6 @@
   - Définition des 4 acteurs (*Admin*, *Vente*, *Stock*, *Inventaire*) et de leurs cas d'utilisation respectifs.
   - representation des UC principaux et des UC interne les relations entre eux avec extend et include.
   - representation du diagramme de classe, des diferentes classe qu'on peut avoir leur attributs leur relations 
-    et multiplicite .
+    et multiplicite.
 - **Difficultés / Obstacles**
   - il y'a beaucoup trop d'informations à prendre en compte.
