@@ -1,0 +1,56 @@
+@startuml
+left to right direction
+actor "Chargé de Vente" as Vendeur
+
+rectangle "StoreManager Pro - Espace Vente & Dettes" {
+    usecase "S'authentifier" as authentifier
+    usecase "Gérer les Ventes (POS)" as gererVentes
+    usecase "Gérer les Dettes" as gererDettes
+
+    usecase "Consulter les Statistiques Vente" as consulterStatistiquesVente
+    usecase "Valider une vente" as validerVente
+    usecase "Sélectionner un Article" as selectionnerArticle
+    usecase "Sélectionner un Client" as selectionnerClient
+    usecase "Choisir le Règlement" as choisirReglement
+    usecase "Contrôler la limite de crédit" as controlerLimiteCredit
+    usecase "Imprimer le ticket" as imprimerTicket
+    usecase "Voir le registre des ventes" as voirRegistreVentes
+    usecase "Afficher le détail de la facture" as afficherDetailFacture
+
+    usecase "Consulter les indicateurs dettes" as consulterIndicateursDettes
+    usecase "Voir le registre des dettes" as voirRegistreDettes
+    usecase "Filtrer les créances" as filtrerCreances
+    usecase "Rembourser une dette" as rembourserDette
+    usecase "Sélectionner le mode de paiement" as selectionnerPaiement
+    usecase "Relancer par SMS" as relancerParSMS
+}
+
+Vendeur --> gererVentes
+Vendeur --> gererDettes
+
+gererVentes ..> authentifier : <<include>>
+gererDettes ..> authentifier : <<include>>
+
+gererVentes ..> consulterStatistiquesVente : <<include>>
+gererVentes <.. validerVente : <<extend>>
+validerVente ..> selectionnerArticle : <<include>>
+validerVente ..> selectionnerClient : <<include>>
+validerVente ..> choisirReglement : <<include>>
+validerVente ..> controlerLimiteCredit : <<include>>
+validerVente ..> imprimerTicket : <<include>>
+
+gererVentes <.. voirRegistreVentes : <<extend>>
+voirRegistreVentes <.. afficherDetailFacture : <<extend>>
+afficherDetailFacture ..> imprimerTicket : <<include>>
+
+gererDettes ..> consulterIndicateursDettes : <<include>>
+gererDettes <.. voirRegistreDettes : <<extend>>
+voirRegistreDettes <.. filtrerCreances : <<extend>>
+voirRegistreDettes <.. rembourserDette : <<extend>>
+rembourserDette ..> selectionnerPaiement : <<include>>
+voirRegistreDettes <.. relancerParSMS : <<extend>>
+
+@enduml
+
+
+

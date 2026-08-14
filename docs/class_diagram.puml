@@ -1,0 +1,120 @@
+@startuml
+
+class Role {
+    - id: int
+    - nom: string
+}
+
+class Utilisateur {
+    - id: int
+    - nom: string
+    - prenom: string
+    - email: string
+    - password: string
+    - adresse: string
+    - telephone: string
+}
+
+class Client {
+    - id: int
+    - nom: string
+    - prenom: string
+    - telephone: string
+    - email: string
+    - limiteCredit: float
+}
+
+class Fournisseur {
+    - id: int
+    - nom: string
+    - email: string
+    - telephone: string
+    - adresse: string
+}
+
+class Produit {
+    - id: int
+    - code: string
+    - libelle: string
+    - categorie: string
+    - prixVente: float
+    - coutAchat: float
+    - stockInitial: int
+    - seuilAlerte: int
+}
+
+class Vente {
+    - id: int
+    - numeroFacture: string
+    - montantTotal: float
+    - montantVerse: float
+    - statut: string
+    - dateEcheance: string
+}
+
+class LigneVente {
+    - id: int
+    - quantite: int
+    - prixUnitaire: float
+}
+
+class Dette {
+    - id: int
+    - ref: string
+    - montantInitial: float
+    - montantVerse: float
+    - montantRestant: float
+    - dateEcheance: string
+}
+
+class StatutDette {
+    - id: int
+    - nom: string
+}
+
+class Paiement {
+    - id: int
+    - montant: float
+    - notes: string
+    - datePaiement: string
+}
+
+class ModePaiement {
+    - id: int
+    - nom: string
+}
+
+class Approvisionnement {
+    - id: int
+    - referenceBl: string
+    - coutAchat: float
+    - dateAppro: string
+    - dateReception: string
+}
+
+class LigneApprovisionnement {
+    - id: int
+    - quantiteAppro: int
+    - quantiteRecue: int
+    - prixAchat: float
+    - sousTotal: float
+}
+
+Utilisateur "1" -- "1" Role
+Produit "*" -- "0..1" Fournisseur
+Vente "0" -- "1..*" LigneVente
+LigneVente "*" -- "1" Produit
+Vente "1" -- "0..1" Dette
+Vente "*" -- "0..1" Client
+Vente "*" -- "0..1" Utilisateur
+Dette "1" -- "0..*" Paiement
+Dette "0..*" -- "1" Client
+Approvisionnement "0" -- "1..*" LigneApprovisionnement
+LigneApprovisionnement "*" -- "1" Produit
+Approvisionnement "*" -- "1" Fournisseur
+Approvisionnement "*" -- "0..1" Utilisateur
+Paiement "*" -- "0..1" Utilisateur
+Paiement "0..*" -- "1" ModePaiement
+Dette "0..*" -- "1" StatutDette
+
+@enduml

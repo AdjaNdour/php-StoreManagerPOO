@@ -1,0 +1,52 @@
+@startuml
+left to right direction
+actor "Chargé de Stock" as Stock
+
+rectangle "StoreManager Pro - Espace Stock & Approvisionnements" {
+    usecase "S'authentifier" as authentifier
+    usecase "Gérer les Approvisionnements" as gererApprovisionnements
+    usecase "Gérer les Produits & Tiers" as gererProduitsEtTiers
+
+    usecase "Consulter les Statistiques Appro" as consulterStatistiquesApprovisionnement
+    usecase "S'approvisionner (Nouveau BL)" as approvisionner
+    usecase "Sélectionner un Fournisseur" as selectionnerFournisseur
+    usecase "Sélectionner un Article" as selectionnerArticle
+    usecase "Lister les Livraisons / BL" as listerLivraisons
+    usecase "Recevoir une Livraison" as recevoirLivraison
+    usecase "Valider une Réception (Incrémenter Stock)" as validerReception
+    usecase "Voir le solde fournisseur" as voirSoldeFournisseur
+
+    usecase "Consulter le Catalogue" as consulterCatalogue
+    usecase "Consulter le Stock" as consulterStock
+    usecase "Ajouter un Produit" as ajouterProduit
+    usecase "Ajouter un Fournisseur" as ajouterFournisseur
+    usecase "Consulter les Clients" as consulterClients
+}
+
+Stock --> gererApprovisionnements
+Stock --> gererProduitsEtTiers
+
+gererApprovisionnements ..> authentifier : <<include>>
+gererProduitsEtTiers ..> authentifier : <<include>>
+
+gererApprovisionnements ..> consulterStatistiquesApprovisionnement : <<include>>
+gererApprovisionnements <.. approvisionner : <<extend>>
+approvisionner ..> selectionnerFournisseur : <<include>>
+approvisionner ..> selectionnerArticle : <<include>>
+
+gererApprovisionnements <.. listerLivraisons : <<extend>>
+listerLivraisons <.. recevoirLivraison : <<extend>>
+recevoirLivraison ..> validerReception : <<include>>
+
+gererApprovisionnements <.. voirSoldeFournisseur : <<extend>>
+
+gererProduitsEtTiers ..> consulterCatalogue : <<include>>
+gererProduitsEtTiers ..> consulterStock : <<include>>
+gererProduitsEtTiers <.. ajouterProduit : <<extend>>
+gererProduitsEtTiers <.. ajouterFournisseur : <<extend>>
+gererProduitsEtTiers <.. consulterClients : <<extend>>
+
+@enduml
+
+
+

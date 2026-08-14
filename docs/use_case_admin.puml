@@ -1,0 +1,112 @@
+@startuml
+left to right direction
+actor "Admin Boutique" as Admin
+
+rectangle "Gestion de la Boutique" {
+    usecase "S'authentifier" as authentifier
+    usecase "Consulter le Tableau de Bord" as consulterTableauDeBord
+    usecase "Gérer les Ventes (POS)" as gererVentes
+    usecase "Gérer les Dettes" as gererDettes
+    usecase "Gérer les Approvisionnements" as gererApprovisionnements
+    usecase "Gérer les Produits & Tiers" as gererProduitsEtTiers
+    usecase "Consulter les Statistiques" as consulterStatistiques
+    usecase "Voir les ventes récentes" as voirVentesRecentes
+    usecase "Voir les dettes du jour" as voirDettesDuJour
+    usecase "Voir les ruptures de stock" as voirRupturesStock
+    usecase "S'approvisionner" as approvisionner
+    usecase "Sélectionner un fournisseur" as selectionnerFournisseur
+    usecase "Voir les livraisons du jour" as voirLivraisonsDuJour
+    usecase "Voir les clients débiteurs" as voirClientsDebiteurs
+    usecase "Voir l'encours des dettes" as voirEncoursDettes
+    usecase "Rembourser une dette" as rembourserDette
+    usecase "Voir le solde fournisseur" as voirSoldeFournisseur
+    usecase "Voir le détail" as voirDetail
+    usecase "Payer" as payer
+    usecase "Valider une vente" as validerVente
+    usecase "Sélectionner un Client" as selectionnerClient
+    usecase "Sélectionner un Article" as selectionnerArticle
+    usecase "Choisir le Règlement" as choisirReglement
+    usecase "Voir le registre général" as voirRegistreGeneral
+    usecase "Voir le registre actif" as voirRegistreActif
+    usecase "Afficher les détails des lignes" as afficherDetailsLignes
+    usecase "Voir les Articles" as voirArticles
+    usecase "Voir les Paiements" as voirPaiements
+    usecase "Sélectionner un paiement" as selectionnerPaiement
+    usecase "Lister les Livraisons" as listerLivraisons
+    usecase "Ajouter un Produit" as ajouterProduit
+    usecase "Modifier un Produit" as modifierProduit
+    usecase "Supprimer un Produit" as supprimerProduit
+    usecase "Ajouter un Client" as ajouterClient
+    usecase "Modifier un Client" as modifierClient
+    usecase "Ajouter un Fournisseur" as ajouterFournisseur
+    usecase "Modifier un Fournisseur" as modifierFournisseur
+    usecase "Consulter le Catalogue" as consulterCatalogue
+    usecase "Consulter le Stock" as stockView
+    usecase "Recevoir une Livraison" as recevoirLivraison
+    usecase "Valider une Réception" as validerReception
+}
+
+Admin --> consulterTableauDeBord 
+Admin --> gererVentes 
+Admin --> gererDettes 
+Admin --> gererApprovisionnements 
+Admin --> gererProduitsEtTiers 
+
+consulterTableauDeBord ..> authentifier : <<include>>
+gererVentes ..> authentifier : <<include>>
+gererDettes ..> authentifier : <<include>>
+gererApprovisionnements ..> authentifier : <<include>>
+gererProduitsEtTiers ..> authentifier : <<include>>
+
+consulterTableauDeBord ..> consulterStatistiques : <<include>>
+consulterTableauDeBord <.. voirVentesRecentes : <<extend>>
+consulterTableauDeBord <.. voirDettesDuJour : <<extend>>
+consulterTableauDeBord <.. voirRupturesStock : <<extend>>
+consulterTableauDeBord <.. voirLivraisonsDuJour : <<extend>>
+consulterTableauDeBord <.. voirClientsDebiteurs : <<extend>>
+
+voirRupturesStock <.. approvisionner : <<extend>>
+
+approvisionner ..> selectionnerFournisseur : <<include>>
+
+voirClientsDebiteurs <.. voirEncoursDettes : <<extend>>
+voirClientsDebiteurs <.. voirSoldeFournisseur : <<extend>>
+
+voirSoldeFournisseur <.. voirDetail : <<extend>>
+voirSoldeFournisseur <.. payer : <<extend>>
+
+gererVentes ..> consulterStatistiques : <<include>>
+gererVentes <.. validerVente : <<extend>>
+validerVente ..> selectionnerClient : <<include>>
+validerVente ..> selectionnerArticle : <<include>>
+validerVente ..> choisirReglement : <<include>>
+gererVentes <.. voirRegistreGeneral : <<extend>>
+
+voirRegistreGeneral <.. afficherDetailsLignes : <<extend>>
+
+gererDettes <.. consulterStatistiques : <<extend>>
+gererDettes <.. voirRegistreActif : <<extend>>
+
+voirRegistreActif <.. voirArticles : <<extend>>
+voirRegistreActif <.. voirPaiements : <<extend>>
+voirRegistreActif <.. rembourserDette : <<extend>>
+
+rembourserDette ..> selectionnerPaiement : <<include>>
+
+gererApprovisionnements ..> consulterStatistiques : <<include>>
+gererApprovisionnements <.. listerLivraisons : <<extend>>
+
+gererProduitsEtTiers ..> consulterCatalogue : <<include>>
+gererProduitsEtTiers ..> stockView : <<include>>
+gererProduitsEtTiers <.. ajouterProduit : <<extend>>
+gererProduitsEtTiers <.. modifierProduit : <<extend>>
+gererProduitsEtTiers <.. supprimerProduit : <<extend>>
+gererProduitsEtTiers <.. ajouterClient : <<extend>>
+gererProduitsEtTiers <.. modifierClient : <<extend>>
+gererProduitsEtTiers <.. ajouterFournisseur : <<extend>>
+gererProduitsEtTiers <.. modifierFournisseur : <<extend>>
+
+listerLivraisons <.. recevoirLivraison : <<extend>>
+recevoirLivraison ..> validerReception : <<include>>
+
+@enduml

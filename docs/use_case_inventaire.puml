@@ -1,0 +1,50 @@
+@startuml
+left to right direction
+actor "Responsable Inventaire" as Inventaire
+
+rectangle "StoreManager Pro - Espace Inventaire & Catalogue" {
+    usecase "S'authentifier" as authentifier
+    usecase "Consulter le Tableau de Bord" as consulterTableauDeBord
+    usecase "Gérer les Produits & Tiers" as gererProduitsEtTiers
+
+    usecase "Consulter les Statistiques & KPIs" as consulterStatistiques
+    usecase "Voir les ventes récentes" as voirVentesRecentes
+    usecase "Voir les dettes du jour" as voirDettesDuJour
+    usecase "Voir les ruptures de stock" as voirRupturesStock
+    usecase "Voir les livraisons du jour" as voirLivraisonsDuJour
+    usecase "Voir les clients débiteurs" as voirClientsDebiteurs
+    usecase "Voir le solde fournisseur" as voirSoldeFournisseur
+
+    usecase "Consulter le Catalogue" as consulterCatalogue
+    usecase "Consulter le Stock" as consulterStock
+    usecase "Ajouter un Produit" as ajouterProduit
+    usecase "Modifier un Produit" as modifierProduit
+    usecase "Ajouter un Client" as ajouterClient
+    usecase "Ajouter un Fournisseur" as ajouterFournisseur
+}
+
+Inventaire --> consulterTableauDeBord
+Inventaire --> gererProduitsEtTiers
+
+consulterTableauDeBord ..> authentifier : <<include>>
+gererProduitsEtTiers ..> authentifier : <<include>>
+
+consulterTableauDeBord ..> consulterStatistiques : <<include>>
+consulterTableauDeBord <.. voirVentesRecentes : <<extend>>
+consulterTableauDeBord <.. voirDettesDuJour : <<extend>>
+consulterTableauDeBord <.. voirRupturesStock : <<extend>>
+consulterTableauDeBord <.. voirLivraisonsDuJour : <<extend>>
+consulterTableauDeBord <.. voirClientsDebiteurs : <<extend>>
+voirClientsDebiteurs <.. voirSoldeFournisseur : <<extend>>
+
+gererProduitsEtTiers ..> consulterCatalogue : <<include>>
+gererProduitsEtTiers ..> consulterStock : <<include>>
+gererProduitsEtTiers <.. ajouterProduit : <<extend>>
+gererProduitsEtTiers <.. modifierProduit : <<extend>>
+gererProduitsEtTiers <.. ajouterClient : <<extend>>
+gererProduitsEtTiers <.. ajouterFournisseur : <<extend>>
+
+@enduml
+
+
+
