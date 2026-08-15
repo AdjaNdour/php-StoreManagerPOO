@@ -22,6 +22,9 @@
   - Création des scripts d'initialisation de base de données relationnelle avec contraintes d'intégrité, clés étrangères
     et vérifications (`sql/schema.sql` pour PostgreSQL et `sql/schema_sqlite.sql` pour SQLite).
 
+  - Implémentation de la classe Singleton `Database.php` se trouvant dans src/Core intégrant un mécanisme de bascule
+    automatique (*fallback try catch*) de PostgreSQL vers SQLite (`erp.db`) en cas d'indisponibilité du serveur SQL principal.
+
 - **Difficultés / Obstacles**
   - il y'a beaucoup trop d'informations à prendre en compte.
 
