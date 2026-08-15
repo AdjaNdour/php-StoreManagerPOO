@@ -39,6 +39,7 @@
 - **Ce qui a été fait** :
   - Création des entités avec encapsulation (attributs privés, les methodes accesseurs et le constructeurs) : `Produit.php`, `Client.php`, `Fournisseur.php`, `Vente.php`, `LigneVente.php`, `Dette.php`, `Paiement.php`, `Approvisionnement.php`, `LigneApprovisionnement.php`, `Utilisateur.php`, `Role.php`, `ModePaiement.php`, `StatutDette.php`.
 
+  - implementation de 3 repository : `ProduitRepository.php`, `ClientRepository.php`, `FournisseurRepository.php` au niveau du dossier Model/Repository avec leur fonction de base: CRUD: insert(), selctAll(), selectById(), delete() et update() + une fonction reutilisable appelée toObjet() qui transforme les donnees retournees par la requete en objet correspondant a mes entités.
 
 - **Difficultés / Obstacles**
   - beaucoup de doutes concernant les attributs nullable obligatoire.
