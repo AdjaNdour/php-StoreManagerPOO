@@ -36,7 +36,7 @@ class ClientRepository
         $client = Database::executeQuery($this->pdo, $sql, ['id' => $id]);
 
         if (!$client) return null;
-        
+
         return $this->toObjet($client);
     }
 
@@ -44,12 +44,12 @@ class ClientRepository
     {
         $sql = "SELECT * FROM clients ORDER BY nom ASC";
 
-        $tableauClients = Database::query( $this->pdo, $sql, false);
+        $tableauClients = Database::query($this->pdo, $sql, false);
 
         $clients = [];
 
         if (empty($tableauClients)) return $clients;
-        
+
         foreach ($tableauClients as $client) {
             $clients[] = $this->toObjet($client);
         }
@@ -63,7 +63,9 @@ class ClientRepository
                 SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email, limite_credit = :limite_credit
                 WHERE id = :id";
 
-        $nbrRowsAffecte = Database::executeUpdate($this->pdo,$sql,
+        $nbrRowsAffecte = Database::executeUpdate(
+            $this->pdo,
+            $sql,
             [
                 'id' => $client->getId(),
                 'nom' => $client->getNom(),
@@ -96,5 +98,18 @@ class ClientRepository
             (float) $client['limite_credit'],
             (int) $client['id']
         );
+    }
+
+    public function getColonneClient(int $clientId, string $colonne): mixed
+    {
+        $sql = "SELECT $colonne FROM clients WHERE id = :id";
+
+        $resultat = Database::executeQuery( $this->pdo, $sql, ['id' => $clientId]);
+
+        if (!$resultat) {
+            throw new Exception("Client introuvable.");
+        }
+
+        return $resultat[$colonne];
     }
 }

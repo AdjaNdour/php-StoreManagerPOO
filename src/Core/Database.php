@@ -10,7 +10,7 @@ class Database
         if (self::$instanceDB === null) {
 
             try {
-                self::$instanceDB = new PDO("pgsql:host=localhost;port=5432;dbname=storemanager", "postgres", "kiki");
+                self::$instanceDB = new PDO("pgsql:host=localhost;port=5432;dbname=storemanagerpro", "postgres", "kiki");
                 self::$driver = 'pgsql';
 
             } catch (Exception $e) {

@@ -16,7 +16,7 @@ class Vente
 
     private ?int $clientId;
     private ?Client $client = null;
-    
+
     private ?int $utilisateurId;
     private ?Utilisateur $utilisateur = null;
 
@@ -168,13 +168,4 @@ class Vente
         $this->lignes[] = $ligne;
     }
 
-    public function getResteDu(): float
-    {
-        return max(0.0, $this->montantTotal - $this->montantVerse);
-    }
-
-    public function getMonnaieRendue(): float
-    {
-        return max(0.0, $this->montantVerse - $this->montantTotal);
-    }
 }

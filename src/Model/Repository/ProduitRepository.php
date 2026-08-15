@@ -41,7 +41,7 @@ class ProduitRepository
         $produit = Database::executeQuery($this->pdo, $sql, ['id' => $id]);
 
         if (!$produit) return null;
-        
+
         return $this->toObjet($produit);
     }
 
@@ -49,12 +49,12 @@ class ProduitRepository
     {
         $sql = "SELECT * FROM produits ORDER BY libelle ASC";
 
-        $tableauProduits = Database::query( $this->pdo, $sql, false);
+        $tableauProduits = Database::query($this->pdo, $sql, false);
 
         $produits = [];
 
         if (empty($tableauProduits)) return $produits;
-        
+
         foreach ($tableauProduits as $produit) {
             $produits[] = $this->toObjet($produit);
         }
@@ -75,7 +75,9 @@ class ProduitRepository
                     fournisseur_id = :fournisseur_id
                 WHERE id = :id";
 
-        $nbrRowsAffecte = Database::executeUpdate($this->pdo, $sql, 
+        $nbrRowsAffecte = Database::executeUpdate(
+            $this->pdo,
+            $sql,
             [
                 'id' => $produit->getId(),
                 'code' => $produit->getCode(),
@@ -113,6 +115,29 @@ class ProduitRepository
             (int) $produit['seuil_alerte'],
             $produit['fournisseur_id'] !== null ? (int) $produit['fournisseur_id'] : null,
             (int) $produit['id']
+        );
+    }
+
+    public function getStock(int $produitId): int
+    {
+        $sql = "SELECT stock_initial FROM produits WHERE id = :id";
+        $resultat = Database::executeQuery($this->pdo, $sql, ['id' => $produitId]);
+        if (!$resultat) {
+            throw new Exception("Produit introuvable.");
+        }
+        return (int) $resultat['stock_initial'];
+    }
+
+    public function updateStock(int $produitId, int $quantite): void
+    {
+        $sql = " UPDATE produits SET stock_initial = stock_initial - :quantite
+                WHERE id = :id AND stock_initial >= :quantite";
+
+        Database::executeUpdate( $this->pdo, $sql,
+            [
+                'quantite' => $quantite,
+                'id' => $produitId
+            ]
         );
     }
 }
