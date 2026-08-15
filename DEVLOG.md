@@ -32,4 +32,13 @@
     comme VARCHAR qui devient TEXT et SERIAL qui devient AUTOINCREMENT.
 
 
-  
+---
+
+### ☀️ [Samedi - Phase 2] : POO, Services & Ventes POS
+- **Heure de réalisation** : 09h00 - 20h00
+- **Ce qui a été fait** :
+  - Création des entités avec encapsulation (attributs privés, les methodes accesseurs et le constructeurs) : `Produit.php`, `Client.php`, `Fournisseur.php`, `Vente.php`, `LigneVente.php`, `Dette.php`, `Paiement.php`, `Approvisionnement.php`, `LigneApprovisionnement.php`, `Utilisateur.php`, `Role.php`, `ModePaiement.php`, `StatutDette.php`.
+
+
+- **Difficultés / Obstacles**
+  - beaucoup de doutes concernant les attributs nullable obligatoire.
