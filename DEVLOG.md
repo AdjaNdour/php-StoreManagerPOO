@@ -56,3 +56,17 @@
   - comprehension de la separation Service/Repository, gestion des transactions pdo et du rollback et comprehension du mécanisme des exceptions (throw, catch, $e->getMessage()).
   la coherence entres les fonctions et leur appel et les test de verification qui doivent etre faites.
   beaucoup de temps dans strucuration de ma fonctionalites valider vente (concernant le service et le repository)
+
+---
+
+### 🚀 [Dimanche - Phase 3] : Dettes, Approvisionnements, Auth, Dashboard & Finalisation
+- **Heure de réalisation** : 08h30 - 18h30
+- **Ce qui a été fait** :
+  - **Gestion des Dettes & Recouvrements** :
+    - Création de `DetteRepository.php` et `PaiementRepository.php` avec transactions atomiques pour les versements.
+    - Création de `DebtService.php` pour le chargement des statistiques de créances des clients et recouvrement, recuperations de dettesActives
+    - Création du contrôleur `DetteController.php` et de la vue `src/Views/dettes/index.php` avec 2 drawers interactifs ( Historique des paiements, Formulaire de versement rapide).
+
+- **Difficultés / Obstacles** :
+  - tourjours la meme chose : trop d'informations en prendre en compte sans lesquelles y'aurais pas de coherence.
+

@@ -29,11 +29,21 @@ class Router
                 'controller' => 'POSController',
                 'className' => 'POSController',
                 'action' => 'validerVente',
-            ], 
+            ],
             '/supprimerDuPanier' => [
                 'controller' => 'POSController',
                 'className' => 'POSController',
                 'action' => 'supprimerDuPanier',
+            ],
+            '/dettes' => [
+                'controller' => 'DetteController',
+                'className' => 'DetteController',
+                'action' => 'getAllDettes',
+            ],
+            '/dettes/rembourser' => [
+                'controller' => 'DetteController',
+                'className' => 'DetteController',
+                'action' => 'enregistrerRemboursementDette',
             ],
 
         ];

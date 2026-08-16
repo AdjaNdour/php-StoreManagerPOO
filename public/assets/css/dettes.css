@@ -1,0 +1,188 @@
+#view-dettes {
+    width: 100%;
+    color: var(--text-main, #ffffff);
+}
+
+#view-dettes .panel-card {
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    box-sizing: border-box;
+}
+
+#view-dettes .panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 16px;
+    font-size: 14px;
+    font-weight: 800;
+    border-bottom: 1px solid #1f2937;
+}
+
+.search-control {
+    width: 250px;
+    padding: 9px 12px;
+    background: #0b0f19;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+    font-size: 12px;
+}
+
+.search-control:focus {
+    border-color: var(--accent, #2dd4bf);
+}
+
+.debt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.debt-table th {
+    padding: 12px;
+    text-align: left;
+    background: #0b0f19;
+    color: var(--text-muted, #9ca3af);
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 800;
+    border-bottom: 1px solid #1f2937;
+}
+
+.debt-table td {
+    padding: 12px;
+    border-bottom: 1px solid #1f2937;
+    vertical-align: middle;
+}
+
+.debt-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.btn-quick-action {
+    padding: 7px 10px;
+    background: transparent;
+    border: 1px solid #374151;
+    border-radius: 7px;
+    color: #d1d5db;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+    transition: 0.2s;
+}
+
+.btn-quick-action:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--accent, #2dd4bf);
+    color: var(--accent, #2dd4bf);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 20px;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.badge-danger {
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: var(--danger, #f43f5e);
+}
+
+.badge.payee {
+    background: rgba(45, 212, 191, 0.1);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    color: var(--accent, #2dd4bf);
+}
+
+.details-drawer {
+    display: none;
+    padding: 16px 20px;
+    background: #0b0f19;
+    border-top: 1px solid #1f2937;
+    border-bottom: 1px solid #1f2937;
+}
+
+.details-drawer .debt-table {
+    margin-top: 10px;
+    background: #111827;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.details-drawer .debt-table th {
+    background: #151d2d;
+}
+
+.form-control {
+    box-sizing: border-box;
+    border-radius: 8px;
+    outline: none;
+}
+
+.form-control:focus {
+    border-color: var(--accent, #2dd4bf) !important;
+}
+
+.btn-submit {
+    border: none;
+    cursor: pointer;
+}
+
+.btn-success {
+    background: var(--success, #22c55e);
+    color: white;
+}
+
+.btn-success:hover {
+    opacity: 0.9;
+}
+
+#debt-repay-drawer {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    #view-dettes .panel-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-control {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .debt-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .btn-quick-action {
+        font-size: 9px;
+        padding: 6px 8px;
+    }
+}
+
+@media (max-width: 600px) {
+    #view-dettes > div:first-child {
+        grid-template-columns: 1fr !important;
+    }
+
+    #view-dettes .panel-title {
+        gap: 10px;
+    }
+
+    .details-drawer {
+        padding: 12px;
+    }
+}

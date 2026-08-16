@@ -241,3 +241,13 @@ SELECT  v.id AS vente_id, v.numero_facture, v.date_vente, v.statut, v.montant_to
                 JOIN produits p ON p.id = lv.produit_id
                 LEFT JOIN modes_paiement mp ON mp.id=v.mode_paiement_id
                 ORDER BY v.id
+
+select * from dettes;
+
+
+SELECT 
+        COALESCE(SUM(montant_restant), 0) AS creances_actives,
+        COUNT(DISTINCT client_id) AS clients_debiteurs,
+        COALESCE(SUM(montant_verse), 0) AS total_recouvrements
+    FROM dettes
+    WHERE montant_restant > 0
