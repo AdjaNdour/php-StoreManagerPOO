@@ -161,6 +161,22 @@ INSERT INTO ventes (numero_facture, montant_total, montant_verse, statut, date_v
 ('CMD-2', 44000.00, 10000.00, 'AVANCE', '2026-08-07', '2026-09-06', 2, 2),
 ('CMD-3', 74000.00, 24000.00, 'AVANCE', '2026-08-07', '2026-09-06', 3, 2),
 ('CMD-4', 15000.00,     0.00, 'CREDIT', '2026-08-07', '2026-09-06', 4, 2);
+ALTER TABLE ventes
+ADD COLUMN mode_paiement_id INT;
+
+ALTER TABLE ventes
+ADD CONSTRAINT fk_ventes_mode_paiement
+FOREIGN KEY (mode_paiement_id)
+REFERENCES modes_paiement(id);
+
+UPDATE ventes
+SET mode_paiement_id=1
+WHERE mode_paiement_id IS NULL;
+
+ALTER TABLE ventes
+ALTER COLUMN mode_paiement_id SET NOT NULL;
+
+SELECT * FROM modes_paiement;
 INSERT INTO lignes_vente (vente_id, produit_id, quantite, prix_unitaire) VALUES
 (1, 1, 2,  25000.00),  
 (1, 2, 1,   8000.00),  
@@ -213,4 +229,15 @@ SELECT  v.id AS vente_id, v.numero_facture, v.date_vente, v.statut, v.montant_to
                 JOIN clients c ON c.id = v.client_id
                 JOIN lignes_vente lv ON lv.vente_id = v.id
                 JOIN produits p ON p.id = lv.produit_id
+                ORDER BY v.id;
+SELECT  v.id AS vente_id, v.numero_facture, v.date_vente, v.statut, v.montant_total,
+                        v.montant_verse, v.date_echeance,v.utilisateur_id,v.mode_paiement_id,mp.nom AS mode_paiement_nom,
+                        c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone,
+                        p.id AS produit_id,p.libelle AS produit_libelle,
+                        lv.quantite,lv.prix_unitaire,(lv.quantite * lv.prix_unitaire) AS sous_total
+                FROM ventes v
+                JOIN clients c ON c.id = v.client_id
+                JOIN lignes_vente lv ON lv.vente_id = v.id
+                JOIN produits p ON p.id = lv.produit_id
+                LEFT JOIN modes_paiement mp ON mp.id=v.mode_paiement_id
                 ORDER BY v.id

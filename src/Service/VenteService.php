@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__) . "/Model/Repository/VenteRepository.php";
 require_once dirname(__DIR__) . "/Model/Repository/ProduitRepository.php";
+require_once dirname(__DIR__) . "/Model/Repository/ClientRepository.php";
 
 class VenteService
 {
@@ -106,4 +107,14 @@ class VenteService
 
         return $total;
     }
+
+    public function getAll(){
+        return $this->repoVente->selectAllVente();
+    }
+
+
+    public function getStatistiques(){
+        return $this->repoVente->selectStatistiques();
+    }
+
 }

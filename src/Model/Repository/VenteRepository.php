@@ -16,9 +16,10 @@ class VenteRepository
         try {
             $this->pdo->beginTransaction();
 
-            $sqlVente = "INSERT INTO ventes (numero_facture, montant_total, montant_verse, statut, date_vente, date_echeance, client_id, utilisateur_id)
-                         VALUES (:numero_facture, :montant_total, :montant_verse, :statut, :date_vente, :date_echeance, :client_id, :utilisateur_id)";
 
+            $sqlVente = "INSERT INTO ventes(numero_facture,montant_total,montant_verse,statut,date_vente,date_echeance,client_id,utilisateur_id,mode_paiement_id) 
+                         VALUES(:numero_facture,:montant_total,:montant_verse,:statut,:date_vente,:date_echeance,:client_id,:utilisateur_id,:mode_paiement_id)";
+            
             Database::executeUpdate($this->pdo, $sqlVente, [
                 "numero_facture" => $vente->getNumeroFacture(),
                 "montant_total" => $vente->getMontantTotal(),
@@ -27,9 +28,10 @@ class VenteRepository
                 "date_vente" => $vente->getDateVente(),
                 "date_echeance" => $vente->getDateEcheance(),
                 "client_id" => $vente->getClientId(),
-                "utilisateur_id" => $vente->getUtilisateurId()
+                "utilisateur_id" => $vente->getUtilisateurId(),
+                "mode_paiement_id" => $vente->getModePaiementId()
             ]);
-    
+
             $venteId = (int)$this->pdo->lastInsertId();
             if ($vente->getMontantVerse() < $vente->getMontantTotal()) {
 
@@ -106,7 +108,7 @@ class VenteRepository
     public function selectAllVente()
     {
         $sql = "SELECT  v.id AS vente_id, v.numero_facture, v.date_vente, v.statut, v.montant_total,
-                        v.montant_verse, v.date_echeance,v.utilisateur_id,
+                        v.montant_verse, v.date_echeance,v.utilisateur_id,v.mode_paiement_id,mp.nom AS mode_paiement_nom,
                         c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone,
                         p.id AS produit_id,p.libelle AS produit_libelle,
                         lv.quantite,lv.prix_unitaire,(lv.quantite * lv.prix_unitaire) AS sous_total
@@ -114,6 +116,7 @@ class VenteRepository
                 JOIN clients c ON c.id = v.client_id
                 JOIN lignes_vente lv ON lv.vente_id = v.id
                 JOIN produits p ON p.id = lv.produit_id
+                LEFT JOIN modes_paiement mp ON mp.id=v.mode_paiement_id
                 ORDER BY v.id";
 
         $tableauVentes = Database::query($this->pdo, $sql, false);
@@ -165,7 +168,17 @@ class VenteRepository
             (int) $data['client_id']
         );
         $vente->setClient($client);
+        $vente->setModePaiementId((int)$data['mode_paiement_id']);
         $vente->setLignes([]);
         return $vente;
+    }
+
+    public function selectStatistiques()
+    {
+        $sql = "SELECT  COUNT(*) AS nbr_ventes,
+                        COALESCE(SUM(montant_total), 0) AS montant_total,
+                        COALESCE(SUM(montant_verse), 0) AS montant_encaisse
+                    FROM ventes";
+        return Database::query($this->pdo, $sql);
     }
 }

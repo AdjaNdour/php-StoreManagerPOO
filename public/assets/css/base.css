@@ -1,0 +1,357 @@
+/* =========================================
+   BASE LAYOUT - STOREMANAGER PRO
+========================================= */
+
+:root {
+    --bg-color: #0b0f19;
+    --navbar-bg: #0f172a;
+
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+
+    --accent: #2dd4bf;
+    --accent-dark: #0d9488;
+
+    --danger: #f87171;
+
+    --border-color: rgba(45, 212, 191, 0.12);
+
+    --font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+
+/* =========================================
+   RESET
+========================================= */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+
+    background: var(--bg-color);
+    color: var(--text-main);
+
+    font-family: var(--font-family);
+    font-size: 14px;
+
+    overflow-x: hidden;
+}
+
+
+/* =========================================
+   APP CONTAINER
+========================================= */
+
+.app-container {
+    width: 100%;
+    min-height: 100vh;
+
+    background: var(--bg-color);
+}
+
+
+/* =========================================
+   NAVBAR
+========================================= */
+
+.navbar {
+    width: 100%;
+
+    min-height: 70px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 32px;
+
+    background: rgba(11, 15, 25, 0.95);
+
+    border-bottom: 1px solid var(--border-color);
+
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.25);
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+
+/* =========================================
+   LOGO
+========================================= */
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: var(--text-main);
+
+    font-size: 17px;
+    font-weight: 800;
+
+    white-space: nowrap;
+
+    margin-right: 40px;
+}
+
+.nav-logo span {
+    font-size: 22px;
+}
+
+
+/* =========================================
+   MENU
+========================================= */
+
+.nav-menu {
+    flex: 1;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    min-width: 0;
+}
+
+
+/* Liens du menu */
+
+.nav-menu > a {
+    display: flex;
+    align-items: center;
+
+    padding: 10px 14px;
+
+    color: var(--text-muted);
+
+    text-decoration: none;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    border-radius: 8px;
+
+    transition:
+        color 0.2s ease,
+        background 0.2s ease;
+}
+
+
+/* Hover */
+
+.nav-menu > a:hover {
+    color: var(--accent);
+
+    background: rgba(45, 212, 191, 0.08);
+}
+
+
+/* Lien actif */
+
+.nav-menu > a.active {
+    color: var(--accent);
+
+    background: rgba(45, 212, 191, 0.1);
+}
+
+
+/* =========================================
+   ZONE UTILISATEUR
+========================================= */
+
+.nav-menu > div {
+    margin-left: auto;
+}
+
+
+/* Nom utilisateur */
+
+.nav-menu > div > div:first-child {
+    text-align: right;
+}
+
+.nav-menu > div > div:first-child > div:first-child {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.nav-menu > div > div:first-child > div:last-child {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+
+/* =========================================
+   BOUTON DECONNEXION
+========================================= */
+
+.btn-quick-action {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 12px;
+
+    border: 1px solid var(--danger);
+
+    border-radius: 8px;
+
+    color: var(--danger);
+
+    background: rgba(248, 113, 113, 0.08);
+
+    text-decoration: none;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.btn-quick-action:hover {
+    background: rgba(248, 113, 113, 0.15);
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================================
+   MAIN
+========================================= */
+
+main {
+    width: 100%;
+
+    min-height: calc(100vh - 70px);
+
+    padding: 32px;
+
+    background: var(--bg-color);
+
+    color: var(--text-main);
+}
+
+
+/* =========================================
+   TOAST
+========================================= */
+
+.toast-box {
+    position: fixed;
+
+    top: 85px;
+    right: 25px;
+
+    z-index: 1000;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1200px) {
+
+    .navbar {
+        padding: 0 20px;
+    }
+
+    .nav-logo {
+        margin-right: 20px;
+    }
+
+    .nav-menu > a {
+        padding: 8px 10px;
+
+        font-size: 11px;
+    }
+
+    main {
+        padding: 24px;
+    }
+}
+
+
+@media (max-width: 900px) {
+
+    .navbar {
+        min-height: auto;
+
+        padding: 15px 20px;
+
+        flex-wrap: wrap;
+
+        gap: 15px;
+    }
+
+    .nav-logo {
+        width: 100%;
+
+        margin-right: 0;
+    }
+
+    .nav-menu {
+        width: 100%;
+
+        flex-wrap: wrap;
+    }
+
+    .nav-menu > div {
+        margin-left: auto;
+    }
+
+    main {
+        padding: 20px;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .navbar {
+        padding: 15px;
+    }
+
+    .nav-menu {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .nav-menu > a {
+        width: 100%;
+    }
+
+    .nav-menu > div {
+        width: 100%;
+
+        margin-left: 0;
+
+        justify-content: space-between;
+    }
+
+    main {
+        padding: 16px;
+    }
+}

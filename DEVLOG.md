@@ -48,6 +48,8 @@
   La sauvegarde de la vente, de sa dette, de ses lignes et la décrémentation du stock sont réalisées dans une transaction avec beginTransaction, commit et rollback en cas d'erreur (annulation de tous).
   Ajout de quelques fonctions dans les repos (produit et client).
 
+  - Construction du contrôleur `POSController.php` et de la vue `views/pos/index.php` .
+
 - **Difficultés / Obstacles**
   - beaucoup de doutes concernant les attributs nullable obligatoire.
 

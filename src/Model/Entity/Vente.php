@@ -14,6 +14,8 @@ class Vente
     private ?string $dateVente;
     private ?string $dateEcheance;
 
+    private ?int $modePaiementId;
+
     private ?int $clientId;
     private ?Client $client = null;
 
@@ -22,9 +24,17 @@ class Vente
 
     private array $lignes = [];
 
-    public function __construct(string $numeroFacture, float $montantTotal = 0.0, float $montantVerse = 0.0, 
-                                string $statut = 'PAYEE', ?string $dateEcheance = null, ?int $clientId = null, 
-                                ?int $utilisateurId = null, ?int $id = null, ?string $dateVente = null
+    public function __construct(
+        string $numeroFacture,
+        float $montantTotal = 0.0,
+        float $montantVerse = 0.0,
+        string $statut = 'PAYEE',
+        ?string $dateEcheance = null,
+        ?int $clientId = null,
+        ?int $utilisateurId = null,
+        ?int $id = null,
+        ?string $dateVente = null,
+        ?int $modePaiementId= null
     ) {
         $this->id = $id;
         $this->numeroFacture = $numeroFacture;
@@ -35,6 +45,7 @@ class Vente
         $this->clientId = $clientId;
         $this->utilisateurId = $utilisateurId;
         $this->dateVente = $dateVente;
+        $this->modePaiementId = $modePaiementId;
     }
 
     public function getId(): ?int
@@ -152,6 +163,15 @@ class Vente
             $this->utilisateurId = $utilisateur->getId();
         }
     }
+    public function setModePaiementId(?int $modePaiementId): void
+    {
+        $this->modePaiementId = $modePaiementId;
+    }
+
+    public function getModePaiementId(): ?int
+    {
+        return $this->modePaiementId;
+    }
 
     public function getLignes(): array
     {
@@ -167,5 +187,4 @@ class Vente
     {
         $this->lignes[] = $ligne;
     }
-
 }
