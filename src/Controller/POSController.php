@@ -6,29 +6,18 @@ require_once PATHBASE . "/src/Service/ModePaiementService.php";
 
 class POSController extends Controller
 {
-    private VenteService $venteService;
-    private ClientService $clientService;
-    private ProduitService $produitService;
-    private ModePaiementService $modePaiementService;
 
-    public function __construct()
-    {
-        $this->venteService = new VenteService();
-        $this->clientService = new ClientService();
-        $this->produitService = new ProduitService();
-        $this->modePaiementService = new ModePaiementService();
-    }
-
-    public function getAllVente(): void
+    public static function getAllVente(): void
     {
         if (!isset($_SESSION['vente']['panier'])) $_SESSION['vente']['panier'] = [];
         if (!isset($_SESSION['vente']['montantTotal'])) $_SESSION['vente']['montantTotal'] = 0;
 
-        $allVentes = $this->venteService->getAll();
-        $stats = $this->venteService->getStatistiques();
-        $produits = $this->produitService->getAll();
-        $clients = $this->clientService->getAll();
-        $modePaiement = $this->modePaiementService->getAll();
+        $allVentes = VenteService::getAll();
+        $stats = VenteService::getStatistiques();
+        $produits = ProduitService::getAll();
+        $clients = ClientService::getAll();
+        $modePaiement = ModePaiementService::getAll();
+        
         $panier = $_SESSION['vente']['panier'];
         $montantTotalPanier = $_SESSION['vente']['montantTotal'];
 
@@ -36,7 +25,7 @@ class POSController extends Controller
         $montantTotal = (float)$stats['montant_total'];
         $montantEncaisse = (float)$stats['montant_encaisse'];
 
-        $this->renderViewLayout('pos', 'base', [
+        self::renderViewLayout('pos', 'base', [
             'allVentes' => $allVentes,
             'nbrVentes' => $nbrVentes,
             'montantTotal' => $montantTotal,
@@ -49,10 +38,10 @@ class POSController extends Controller
         ]);
     }
 
-    public function ajouterAuPanier(): void
+    public static function ajouterAuPanier(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirectToRoute('pos');
+            self::redirectToRoute('pos');
             return;
         }
 
@@ -61,7 +50,7 @@ class POSController extends Controller
 
         if ($produitId <= 0 || $quantite <= 0) throw new Exception("Produit ou quantité invalide.");
 
-        $produit = $this->produitService->getById($produitId);
+        $produit = ProduitService::getById($produitId);
 
         if ($produit === null) throw new Exception("Produit introuvable.");
         if ($quantite > $produit->getStockInitial()) throw new Exception("Stock insuffisant.");
@@ -76,8 +65,8 @@ class POSController extends Controller
             'montant' => $quantite * $prixUnitaire
         ];
 
-        $this->ajouterLignePanier($ligne);
-        $this->redirectToRoute('pos');
+        self::ajouterLignePanier($ligne);
+        self::redirectToRoute('pos');
     }
 
     private function ajouterLignePanier(array $ligne): void
@@ -88,10 +77,10 @@ class POSController extends Controller
         $_SESSION['vente']['montantTotal'] += $ligne['montant'];
     }
 
-    public function supprimerDuPanier(): void
+    public static function supprimerDuPanier(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirectToRoute('pos');
+            self::redirectToRoute('pos');
             return;
         }
 
@@ -103,20 +92,20 @@ class POSController extends Controller
             array_splice($_SESSION['vente']['panier'], $index, 1);
         }
 
-        $this->redirectToRoute('pos');
+        self::redirectToRoute('pos');
     }
 
-    public function validerVente(): void
+    public static function validerVente(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirectToRoute('pos');
+            self::redirectToRoute('pos');
             return;
         }
 
         $action = $_POST['btnSaveVente'];
 
         if ($action === 'addPanier') {
-            $this->ajouterAuPanier();
+            self::ajouterAuPanier();
             return;
         }
 
@@ -160,11 +149,11 @@ class POSController extends Controller
         foreach ($lignes as $ligne) {
             $vente->ajouterLigne($ligne);
         }
-        $this->venteService->validerVente($vente);
+        VenteService::validerVente($vente);
 
         $_SESSION['vente']['panier'] = [];
         $_SESSION['vente']['montantTotal'] = 0;
 
-        $this->redirectToRoute('pos');
+        self::redirectToRoute('pos');
     }
 }

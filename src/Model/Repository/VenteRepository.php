@@ -4,23 +4,17 @@ require_once dirname(__DIR__) . "/Entity/Vente.php";
 
 class VenteRepository
 {
-    private PDO $pdo;
 
-    public function __construct()
-    {
-        $this->pdo = Database::connexionDB();
-    }
-
-    public function insert(Vente $vente): int
+    public static function insert(Vente $vente): int
     {
         try {
-            $this->pdo->beginTransaction();
+            $pdo = Database::connexionDB();
 
-
+            $pdo->beginTransaction();
             $sqlVente = "INSERT INTO ventes(numero_facture,montant_total,montant_verse,statut,date_vente,date_echeance,client_id,utilisateur_id,mode_paiement_id) 
                          VALUES(:numero_facture,:montant_total,:montant_verse,:statut,:date_vente,:date_echeance,:client_id,:utilisateur_id,:mode_paiement_id)";
-            
-            Database::executeUpdate($this->pdo, $sqlVente, [
+
+            Database::executeUpdate($pdo, $sqlVente, [
                 "numero_facture" => $vente->getNumeroFacture(),
                 "montant_total" => $vente->getMontantTotal(),
                 "montant_verse" => $vente->getMontantVerse(),
@@ -32,7 +26,7 @@ class VenteRepository
                 "mode_paiement_id" => $vente->getModePaiementId()
             ]);
 
-            $venteId = (int)$this->pdo->lastInsertId();
+            $venteId = (int)$pdo->lastInsertId();
             if ($vente->getMontantVerse() < $vente->getMontantTotal()) {
 
                 $montantRestant = $vente->getMontantTotal() - $vente->getMontantVerse();
@@ -41,7 +35,7 @@ class VenteRepository
                 VALUES (:ref,:montant_initial,:montant_verse,:montant_restant,:date_dette,:date_echeance,:vente_id,:client_id,:statut_dette_id)";
 
                 $res = Database::executeUpdate(
-                    $this->pdo,
+                    $pdo,
                     $sqlDette,
                     [
                         'ref' => 'DT-' . $venteId,
@@ -70,7 +64,7 @@ class VenteRepository
             $tableauLigne = $vente->getLignes();
             foreach ($tableauLigne as $ligne) {
                 Database::executeUpdate(
-                    $this->pdo,
+                    $pdo,
                     $sqlLigneVente,
                     [
                         'vente_id' => $venteId,
@@ -80,7 +74,7 @@ class VenteRepository
                     ]
                 );
                 $res = Database::executeUpdate(
-                    $this->pdo,
+                    $pdo,
                     $sqlProduitUpdate,
                     [
                         'quantite' => $ligne->getQuantite(),
@@ -93,20 +87,22 @@ class VenteRepository
                     );
                 }
             }
-            $this->pdo->commit();
+            $pdo->commit();
 
             return $venteId;
         } catch (Exception $e) {
 
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
             throw $e;
         }
     }
 
-    public function selectAllVente()
+    public static function selectAllVente()
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT  v.id AS vente_id, v.numero_facture, v.date_vente, v.statut, v.montant_total,
                         v.montant_verse, v.date_echeance,v.utilisateur_id,v.mode_paiement_id,mp.nom AS mode_paiement_nom,
                         c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone,
@@ -119,7 +115,7 @@ class VenteRepository
                 LEFT JOIN modes_paiement mp ON mp.id=v.mode_paiement_id
                 ORDER BY v.id";
 
-        $tableauVentes = Database::query($this->pdo, $sql, false);
+        $tableauVentes = Database::query($pdo, $sql, false);
 
         $ventes = [];
         if (empty($tableauVentes)) return $ventes;
@@ -129,7 +125,7 @@ class VenteRepository
             $venteId = (int) $vente['vente_id'];
 
             if ($venteId !== $venteIdRepere) {
-                $ventes[$venteId] = $this->toObjet($vente);
+                $ventes[$venteId] = self::toObjet($vente);
                 $venteIdRepere = $venteId;
             }
 
@@ -173,12 +169,14 @@ class VenteRepository
         return $vente;
     }
 
-    public function selectStatistiques()
+    public static function selectStatistiques()
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT  COUNT(*) AS nbr_ventes,
                         COALESCE(SUM(montant_total), 0) AS montant_total,
                         COALESCE(SUM(montant_verse), 0) AS montant_encaisse
                     FROM ventes";
-        return Database::query($this->pdo, $sql);
+        return Database::query($pdo, $sql);
     }
 }

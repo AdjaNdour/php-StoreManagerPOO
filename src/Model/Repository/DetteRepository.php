@@ -8,15 +8,10 @@ require_once dirname(__DIR__) . "/Entity/Client.php";
 
 class DetteRepository
 {
-    private PDO $pdo;
-
-    public function __construct()
+    public static function selectById(int $id): ?Dette
     {
-        $this->pdo = Database::connexionDB();
-    }
+        $pdo = Database::connexionDB();
 
-    public function selectById(int $id): ?Dette
-    {
         $sql = "SELECT d.*, 
                        c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
                        sd.nom AS statut_nom,
@@ -27,17 +22,19 @@ class DetteRepository
                 JOIN ventes v ON v.id = d.vente_id
                 WHERE d.id = :id";
 
-        $dept = Database::executeQuery($this->pdo, $sql, ['id' => $id]);
+        $dept = Database::executeQuery($pdo, $sql, ['id' => $id]);
         if (!$dept) return null;
 
-        $dette = $this->toObjet($dept);
-        $dette->setPaiements($this->selectPaiementsByDetteId($id));
+        $dette = self::toObjet($dept);
+        $dette->setPaiements(self::selectPaiementsByDetteId($id));
         return $dette;
     }
 
 
-    public function selectAll(): array
+    public static function selectAll(): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT d.*,
                        c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
                        sd.nom AS statut_nom,
@@ -48,28 +45,30 @@ class DetteRepository
                 JOIN ventes v ON v.id = d.vente_id
                 ORDER BY d.id DESC";
 
-        $tableauDettes = Database::query($this->pdo, $sql, false);
+        $tableauDettes = Database::query($pdo, $sql, false);
         $dettes = [];
         if (empty($tableauDettes)) return $dettes;
 
         foreach ($tableauDettes as $dept) {
-            $dette = $this->toObjet($dept);
-            $dette->setPaiements($this->selectPaiementsByDetteId((int)$dept['id']));
+            $dette = self::toObjet($dept);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dept['id']));
             $dettes[] = $dette;
         }
 
         return $dettes;
     }
 
-    public function selectPaiementsByDetteId(int $detteId): array
+    private static function selectPaiementsByDetteId(int $detteId): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT p.*, mp.nom AS mode_nom
                 FROM paiements p
                 JOIN modes_paiement mp ON mp.id = p.mode_paiement_id
                 WHERE p.dette_id = :dette_id
                 ORDER BY p.id ASC";
 
-        $tableauPaiements = Database::executeQuery($this->pdo, $sql, ['dette_id' => $detteId], false);
+        $tableauPaiements = Database::executeQuery($pdo, $sql, ['dette_id' => $detteId], false);
         $paiements = [];
         if (empty($tableauPaiements)) return $paiements;
 
@@ -91,8 +90,10 @@ class DetteRepository
         return $paiements;
     }
 
-    public function selectProduitsByDetteId(int $detteId): array
+    public static function selectProduitsByDetteId(int $detteId): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT p.*,lv.quantite as quantity,lv.prix_unitaire,(lv.quantite*lv.prix_unitaire) AS sous_total
                     FROM dettes d
                     INNER JOIN ventes v ON v.id=d.vente_id
@@ -100,7 +101,7 @@ class DetteRepository
                     INNER JOIN produits p ON p.id=lv.produit_id
                 WHERE d.id=:dette_id";
 
-        $tableauProduits = Database::executeQuery($this->pdo, $sql, ['dette_id' => $detteId], false);
+        $tableauProduits = Database::executeQuery($pdo, $sql, ['dette_id' => $detteId], false);
         $produits = [];
         if (empty($tableauProduits)) return $produits;
 
@@ -121,8 +122,10 @@ class DetteRepository
         return $produits;
     }
 
-    public function selectActiveDettes(): array
+    public static function selectActiveDettes(): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT d.*, p.libelle,
                     c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
                        sd.nom AS statut_nom,
@@ -136,21 +139,23 @@ class DetteRepository
                 WHERE d.montant_restant > 0
                 ORDER BY d.id DESc";
 
-        $tableauDettesActives = Database::query($this->pdo, $sql, false);
+        $tableauDettesActives = Database::query($pdo, $sql, false);
         $dettes = [];
         if (empty($tableauDettesActives)) return $dettes;
 
         foreach ($tableauDettesActives as $deptActive) {
-            $dette = $this->toObjet($deptActive);
-            $dette->setPaiements($this->selectPaiementsByDetteId((int)$deptActive['id']));
+            $dette = self::toObjet($deptActive);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$deptActive['id']));
             $dettes[] = $dette;
         }
 
         return $dettes;
     }
 
-    public function selectStatistiques(): array
+    public static function selectStatistiques(): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT 
                     COALESCE(SUM(montant_restant), 0) AS somme_Montant_Restant_Dettes,
                     COUNT(DISTINCT client_id) AS nbr_Clients_Dettes,
@@ -158,7 +163,7 @@ class DetteRepository
                 FROM dettes
                 WHERE montant_restant > 0";
 
-        return Database::query($this->pdo, $sql);
+        return Database::query($pdo, $sql);
     }
 
     private function toObjet(array $data): Dette

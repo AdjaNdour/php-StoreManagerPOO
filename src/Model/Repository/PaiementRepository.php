@@ -4,20 +4,16 @@ require_once dirname(__DIR__) . "/Entity/Paiement.php";
 
 class PaiementRepository
 {
-    private PDO $pdo;
 
-    public function __construct()
+    public static function enregistrerPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
     {
-        $this->pdo = Database::connexionDB();
-    }
+        $pdo = Database::connexionDB();
 
-    public function enregistrerPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
-    {
         try {
-            $this->pdo->beginTransaction();
+            $pdo->beginTransaction();
 
             $sqlDette = "SELECT * FROM dettes WHERE id = :id ";
-            $dette = Database::executeQuery($this->pdo, $sqlDette, ['id' => $detteId]);
+            $dette = Database::executeQuery($pdo, $sqlDette, ['id' => $detteId]);
 
             if (!$dette) {
                 throw new Exception("Dette introuvable.");
@@ -30,8 +26,8 @@ class PaiementRepository
 
             $sqlPaiement = "INSERT INTO paiements (montant, notes, date_paiement, dette_id, mode_paiement_id, utilisateur_id)
                             VALUES (:montant, :notes, CURRENT_DATE, :dette_id, :mode_paiement_id, :utilisateur_id)";
-                            
-            Database::executeUpdate($this->pdo, $sqlPaiement, [
+
+            Database::executeUpdate($pdo, $sqlPaiement, [
                 'montant' => $montant,
                 'notes' => $notes ?? 'Règlement de dette #' . $dette['ref'],
                 'dette_id' => $detteId,
@@ -47,8 +43,8 @@ class PaiementRepository
                                    montant_restant = :montant_restant,
                                    statut_dette_id = :statut_dette_id
                                WHERE id = :id";
-                               
-            Database::executeUpdate($this->pdo, $sqlUpdateDette, [
+
+            Database::executeUpdate($pdo, $sqlUpdateDette, [
                 'montant_verse' => $nouveauMontantVerse,
                 'montant_restant' => $nouveauMontantRestant,
                 'statut_dette_id' => $nouveauStatutId,
@@ -57,17 +53,17 @@ class PaiementRepository
 
             if ($nouveauMontantRestant <= 0.0) {
                 $sqlUpdateVente = "UPDATE ventes SET statut = 'PAYEE' WHERE id = :vente_id";
-                Database::executeUpdate($this->pdo, $sqlUpdateVente, ['vente_id' => $dette['vente_id']]);
+                Database::executeUpdate($pdo, $sqlUpdateVente, ['vente_id' => $dette['vente_id']]);
             } else {
                 $sqlUpdateVente = "UPDATE ventes SET statut = 'AVANCE' WHERE id = :vente_id";
-                Database::executeUpdate($this->pdo, $sqlUpdateVente, ['vente_id' => $dette['vente_id']]);
+                Database::executeUpdate($pdo, $sqlUpdateVente, ['vente_id' => $dette['vente_id']]);
             }
 
-            $this->pdo->commit();
+            $pdo->commit();
             return true;
         } catch (Exception $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
             throw $e;
         }

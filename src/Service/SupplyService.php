@@ -6,26 +6,20 @@ require_once dirname(__DIR__) . "/Model/Entity/LigneApprovisionnement.php";
 
 class SupplyService
 {
-    private ApprovisionnementRepository $approRepo;
 
-    public function __construct()
+    public static function getAll(): array
     {
-        $this->approRepo = new ApprovisionnementRepository();
+        return ApprovisionnementRepository::selectAll();
     }
 
-    public function getAll(): array
+    public static function getById(int $id): ?Approvisionnement
     {
-        return $this->approRepo->selectAll();
+        return ApprovisionnementRepository::selectById($id);
     }
 
-    public function getById(int $id): ?Approvisionnement
+    public static function getStatistiques(): array
     {
-        return $this->approRepo->selectById($id);
-    }
-
-    public function getStatistiques(): array
-    {
-        return $this->approRepo->selectStatistiques();
+        return ApprovisionnementRepository::selectStatistiques();
     }
 
 }

@@ -4,21 +4,15 @@ require_once dirname(__DIR__) . "/Model/Repository/ClientRepository.php";
 
 class ClientService
 {
-    private ClientRepository $repoClient;
-
-    public function __construct()
+  
+    public static function getAll(): array
     {
-        $this->repoClient = new ClientRepository();
+        return ClientRepository::selectAll();
     }
 
-    public function getAll(): array
-    {
-        return $this->repoClient->selectAll();
-    }
-
-    public function getById(int $id): Client
+    public static function getById(int $id): Client
     {
 
-        return $this->repoClient->selectById($id);
+        return ClientRepository::selectById($id);
     }
 }

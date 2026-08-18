@@ -5,27 +5,10 @@ require_once dirname(__DIR__) . "/Core/Database.php";
 
 class ModePaiementService
 {
-    private PDO $pdo;
 
-    public function __construct()
+    public static function getAll(): array
     {
-        $this->pdo = Database::connexionDB();
+        return PaiementModeRepository::selectAll();
     }
-
-    public function getAll(): array
-    {
-        $sql = "SELECT * FROM modes_paiement ORDER BY id ASC";
-        $tableau = Database::query($this->pdo, $sql, false);
-        $modes = [];
-
-        if (empty($tableau)) {
-            return $modes;
-        }
-
-        foreach ($tableau as $row) {
-            $modes[] = new ModePaiement($row['nom'], (int) $row['id']);
-        }
-
-        return $modes;
-    }
+  
 }

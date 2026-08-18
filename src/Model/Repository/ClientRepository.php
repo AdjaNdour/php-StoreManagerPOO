@@ -4,19 +4,14 @@ require_once dirname(__DIR__) . "/Entity/Client.php";
 
 class ClientRepository
 {
-    private PDO $pdo;
-
-    public function __construct()
+    public static function insert(Client $client): int
     {
-        $this->pdo = Database::connexionDB();
-    }
+        $pdo = Database::connexionDB();
 
-    public function insert(Client $client): int
-    {
         $sql = "INSERT INTO clients (nom, prenom, telephone, email, limite_credit)
                 VALUES(:nom, :prenom, :telephone, :email, :limite_credit)";
 
-        Database::executeUpdate($this->pdo, $sql, [
+        Database::executeUpdate($pdo, $sql, [
             'nom' => $client->getNom(),
             'prenom' => $client->getPrenom(),
             'telephone' => $client->getTelephone(),
@@ -24,47 +19,53 @@ class ClientRepository
             'limite_credit' => $client->getLimiteCredit()
         ]);
 
-        $id = (int) $this->pdo->lastInsertId();
+        $id = (int) $pdo->lastInsertId();
         $client->setId($id);
         return $id;
     }
 
-    public function selectById(int $id): ?Client
+    public static function selectById(int $id): ?Client
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT * FROM clients WHERE id = :id";
 
-        $client = Database::executeQuery($this->pdo, $sql, ['id' => $id]);
+        $client = Database::executeQuery($pdo, $sql, ['id' => $id]);
 
         if (!$client) return null;
 
-        return $this->toObjet($client);
+        return self::toObjet($client);
     }
 
-    public function selectAll(): array
+    public static function selectAll(): array
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT * FROM clients ORDER BY nom ASC";
 
-        $tableauClients = Database::query($this->pdo, $sql, false);
+        $tableauClients = Database::query($pdo, $sql, false);
 
         $clients = [];
 
         if (empty($tableauClients)) return $clients;
 
         foreach ($tableauClients as $client) {
-            $clients[] = $this->toObjet($client);
+            $clients[] = self::toObjet($client);
         }
 
         return $clients;
     }
 
-    public function update(Client $client): bool
+    public static function update(Client $client): bool
     {
+        $pdo = Database::connexionDB();
+
         $sql = "UPDATE clients
                 SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email, limite_credit = :limite_credit
                 WHERE id = :id";
 
         $nbrRowsAffecte = Database::executeUpdate(
-            $this->pdo,
+            $pdo,
             $sql,
             [
                 'id' => $client->getId(),
@@ -79,11 +80,13 @@ class ClientRepository
         return $nbrRowsAffecte > 0 ? true : false;
     }
 
-    public function delete(int $id): bool
+    public static function delete(int $id): bool
     {
+        $pdo = Database::connexionDB();
+
         $sql = "DELETE FROM clients WHERE id = :id";
 
-        $nbrRowsAffecte = Database::executeUpdate($this->pdo, $sql, ['id' => $id]);
+        $nbrRowsAffecte = Database::executeUpdate($pdo, $sql, ['id' => $id]);
 
         return $nbrRowsAffecte > 0 ? true : false;
     }
@@ -100,11 +103,13 @@ class ClientRepository
         );
     }
 
-    public function getColonneClient(int $clientId, string $colonne): mixed
+    public static function getColonneClient(int $clientId, string $colonne): mixed
     {
+        $pdo = Database::connexionDB();
+
         $sql = "SELECT $colonne FROM clients WHERE id = :id";
 
-        $resultat = Database::executeQuery( $this->pdo, $sql, ['id' => $clientId]);
+        $resultat = Database::executeQuery($pdo, $sql, ['id' => $clientId]);
 
         if (!$resultat) {
             throw new Exception("Client introuvable.");

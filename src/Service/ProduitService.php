@@ -4,20 +4,14 @@ require_once dirname(__DIR__) . "/Model/Repository/ProduitRepository.php";
 
 class ProduitService
 {
-    private ProduitRepository $repoProduit;
-
-    public function __construct()
+  
+    public static function getAll(): array
     {
-        $this->repoProduit = new ProduitRepository();
+        return ProduitRepository::selectAll();
     }
 
-    public function getAll(): array
+    public static function getById(int $id): Produit
     {
-        return $this->repoProduit->selectAll();
-    }
-
-    public function getById(int $id): Produit
-    {
-        return $this->repoProduit->selectById($id);
+        return ProduitRepository::selectById($id);
     }
 }
