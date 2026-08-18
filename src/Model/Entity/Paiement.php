@@ -6,27 +6,25 @@ require_once __DIR__ . '/ModePaiement.php';
 class Paiement
 {
     private ?int $id;
-    private int $detteId;
     private float $montant;
     private ?string $notes;
     private ?string $datePaiement;
-
-    private int $modePaiementId;
-    private ?ModePaiement $modePaiement = null;
     
-    private ?int $utilisateurId;
-    private ?Utilisateur $utilisateur = null;
+    private ?Dette $dette ;
+    private ModePaiement $modePaiement;
+    private ?Utilisateur $utilisateur;
 
-    public function __construct(int $detteId, int $modePaiementId, float $montant, ?int $utilisateurId = null,
+    public function __construct(ModePaiement $modePaiement, float $montant,
+                                ?Utilisateur $utilisateur = null,?Dette $dette=null,
                                 ?string $notes = null, ?int $id = null, ?string $datePaiement = null
     ) {
         $this->id = $id;
-        $this->detteId = $detteId;
+        $this->dette = $dette;
         $this->montant = $montant;
         $this->notes = $notes;
         $this->datePaiement = $datePaiement;
-        $this->utilisateurId = $utilisateurId;
-        $this->modePaiementId = $modePaiementId;
+        $this->utilisateur = $utilisateur;
+        $this->modePaiement = $modePaiement;
 
     }
 
@@ -40,37 +38,30 @@ class Paiement
         $this->id = $id;
     }
 
-    public function getDetteId(): int
+    public function getDette(): ?Dette
     {
-        return $this->detteId;
+        return $this->dette;
     }
 
-    public function setDetteId(int $detteId): void
+    public function setDette(?Dette $dette): void
     {
-        $this->detteId = $detteId;
+        $this->dette = $dette;
     }
 
     public function getModePaiementId(): int
     {
-        return $this->modePaiementId;
+        return $this->modePaiement->getId();
     }
 
-    public function setModePaiementId(int $modePaiementId): void
-    {
-        $this->modePaiementId = $modePaiementId;
-    }
-
-    public function getModePaiement(): ?ModePaiement
+    public function getModePaiement(): ModePaiement
     {
         return $this->modePaiement;
     }
 
-    public function setModePaiement(?ModePaiement $modePaiement): void
+    public function setModePaiement(ModePaiement $modePaiement): void
     {
         $this->modePaiement = $modePaiement;
-        if ($modePaiement !== null && $modePaiement->getId() !== null) {
-            $this->modePaiementId = $modePaiement->getId();
-        }
+    
     }
 
     public function getMontant(): float
@@ -85,12 +76,7 @@ class Paiement
 
     public function getUtilisateurId(): ?int
     {
-        return $this->utilisateurId;
-    }
-
-    public function setUtilisateurId(?int $utilisateurId): void
-    {
-        $this->utilisateurId = $utilisateurId;
+        return $this->utilisateur->getId();
     }
 
     public function getUtilisateur(): ?Utilisateur
@@ -101,9 +87,6 @@ class Paiement
     public function setUtilisateur(?Utilisateur $utilisateur): void
     {
         $this->utilisateur = $utilisateur;
-        if ($utilisateur !== null && $utilisateur->getId() !== null) {
-            $this->utilisateurId = $utilisateur->getId();
-        }
     }
 
     public function getNotes(): ?string

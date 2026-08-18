@@ -47,4 +47,9 @@ class DebtService
 
         return $this->repoPaiement->enregistrerPaiement($detteId, $montant, $modePaiementId, $utilisateurId, $notes);
     }
+
+    public function getAllProduitsDette(int $detteId)
+    {
+        return $this->repoDette->selectProduitsByDetteId($detteId);
+    }
 }

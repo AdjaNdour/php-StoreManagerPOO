@@ -12,24 +12,22 @@ class Approvisionnement
     private ?string $dateAppro;
     private ?string $dateReception;
 
-    private int $fournisseurId;
-    private ?Fournisseur $fournisseur = null;
-    
-    private ?int $utilisateurId;
+    private Fournisseur $fournisseur;
     private ?Utilisateur $utilisateur = null;
 
     private array $lignes = [];
 
-    public function __construct(string $referenceBl, int $fournisseurId, float $coutAchat = 0.0, ?string $dateReception = null, 
-        ?int $utilisateurId = null, ?int $id = null, ?string $dateAppro = null
+    public function __construct( string $referenceBl, Fournisseur $fournisseur,
+                                ?string $dateReception,?int $id , ?string $dateAppro , ?Utilisateur $utilisateur,
+                                 float $coutAchat = 0.0,
     ) {
         $this->id = $id;
         $this->referenceBl = $referenceBl;
-        $this->fournisseurId = $fournisseurId;
         $this->coutAchat = $coutAchat;
         $this->dateReception = $dateReception;
-        $this->utilisateurId = $utilisateurId;
         $this->dateAppro = $dateAppro;
+        $this->fournisseur = $fournisseur;
+        $this->utilisateur = $utilisateur;
     }
 
     public function getId(): ?int
@@ -82,37 +80,19 @@ class Approvisionnement
         $this->dateReception = $dateReception;
     }
 
-    public function getFournisseurId(): int
-    {
-        return $this->fournisseurId;
-    }
-
-    public function setFournisseurId(int $fournisseurId): void
-    {
-        $this->fournisseurId = $fournisseurId;
-    }
-
-    public function getFournisseur(): ?Fournisseur
+    public function getFournisseur(): Fournisseur
     {
         return $this->fournisseur;
     }
 
-    public function setFournisseur(?Fournisseur $fournisseur): void
+    public function setFournisseur(Fournisseur $fournisseur): void
     {
         $this->fournisseur = $fournisseur;
-        if ($fournisseur !== null && $fournisseur->getId() !== null) {
-            $this->fournisseurId = $fournisseur->getId();
-        }
     }
 
-    public function getUtilisateurId(): ?int
+    public function getFournisseurId(): int
     {
-        return $this->utilisateurId;
-    }
-
-    public function setUtilisateurId(?int $utilisateurId): void
-    {
-        $this->utilisateurId = $utilisateurId;
+        return $this->fournisseur->getId();
     }
 
     public function getUtilisateur(): ?Utilisateur
@@ -123,9 +103,6 @@ class Approvisionnement
     public function setUtilisateur(?Utilisateur $utilisateur): void
     {
         $this->utilisateur = $utilisateur;
-        if ($utilisateur !== null && $utilisateur->getId() !== null) {
-            $this->utilisateurId = $utilisateur->getId();
-        }
     }
 
     public function getLignes(): array

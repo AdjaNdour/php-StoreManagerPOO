@@ -6,6 +6,7 @@ $modes = $viewData['modes'] ?? [];
 $creancesActives = $viewData['creancesActives'] ?? 0;
 $clientsDebiteurs = $viewData['clientsDebiteurs'] ?? 0;
 $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
+$produitsParDette = $viewData['produitsParDette'] ?? [];
 ?>
 
 <div id="view-dettes" class="view-section" style="display: block;">
@@ -65,8 +66,9 @@ $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
                             $client = $dette->getClient();
                             $clientNom = $client ? $client->getNomComplet() : 'Client';
                             $clientTel = $client ? $client->getTelephone() : '';
-                            // $lignes = $detteRepo->selectLignesVenteByVenteId($dette->getVenteId());
                             $paiements = $dette->getPaiements();
+                            $produitsDette = $produitsParDette[$dette->getId()] ?? [];
+                            // Debug::dd($produitsDette);
                             ?>
                             <tr id="debt-row-<?= $dette->getId() ?>" data-client-name="<?= strtolower($clientNom . ' ' . $clientTel) ?>" style="transition: all 0.2s;">
                                 <td style="font-weight: 700; color: var(--text-muted);">
@@ -87,11 +89,12 @@ $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
                                     </span>
                                 </td>
                                 <td style="display: flex; gap: 6px;">
-                                    <button class="btn-quick-action" onclick="toggleDetails('debt-lines-<?= $dette->getId() ?>')">Articles</button>
+                                    <button type="button" class="btn-quick-action" onclick="toggleDetails('debt-lines-<?= $dette->getId() ?>', this)">Articles</button>
                                     <button class="btn-quick-action" style="border-color: var(--accent); color: var(--accent);" onclick="toggleDetails('debt-details-<?= $dette->getId() ?>')">💳 Paiements</button>
                                     <button class="btn-quick-action" style="border-color: var(--warning); color: var(--warning);" onclick="toggleDetails('debt-repay-drawer-<?= $dette->getId() ?>')">Rembourser</button>
                                 </td>
                             </tr>
+
                             <tr>
                                 <td colspan="8" style="padding: 0; border: none;">
                                     <!-- Drawer 1: Payments list -->
@@ -124,7 +127,6 @@ $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
                                             </tbody>
                                         </table>
                                     </div>
-
                                     <!-- Drawer 2: Product lines -->
                                     <div class="details-drawer" id="debt-lines-<?= $dette->getId() ?>">
                                         <div style="font-weight: 700; font-size: 12px; color: var(--accent); margin-bottom: 8px;">Articles de la Vente à Crédit :</div>
@@ -138,17 +140,17 @@ $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php if (empty($lignes)): ?>
+                                                <?php if (empty($produitsDette)): ?>
                                                     <tr>
                                                         <td colspan="4" style="text-align: center; color: var(--text-muted);">Aucun article.</td>
                                                     </tr>
                                                 <?php else: ?>
-                                                    <?php foreach ($lignes as $ligne): ?>
+                                                    <?php foreach ($produitsDette as $prod): ?>
                                                         <tr>
-                                                            <td><?= $ligne->getProduit() ? $ligne->getProduit()->getLibelle() : ('Article #' . $ligne->getProduitId()) ?></td>
-                                                            <td><?= $ligne->getQuantite() ?></td>
-                                                            <td><?= $ligne->getPrixUnitaire() ?> F</td>
-                                                            <td style="font-weight: 700; color: var(--accent);"><?= $ligne->getSousTotal() ?> F</td>
+                                                            <td><?= $prod->getLibelle() . "Article #" . $prod->getId() ?></td>
+                                                            <td><?= $prod->getStockInitial() ?></td>
+                                                            <td><?= $prod->getPrixVente() ?> F</td>
+                                                            <td style="font-weight: 700; color: var(--accent);"><?= $prod->getCoutAchat() ?> F</td>
                                                         </tr>
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
@@ -178,7 +180,6 @@ $totalRecouvrements = $viewData['totalRecouvrements'] ?? 0;
                                             <button type="button" onclick="setRepayAmount(<?= $dette->getId() ?>, <?= (int)$dette->getMontantRestant() ?>)" style="background: rgba(45, 212, 191, 0.1); border: 1px solid var(--accent); color: var(--accent); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">Tout solder (<?= $dette->getMontantRestant() ?> F)</button>
                                             <button type="button" onclick="setRepayAmount(<?= $dette->getId() ?>, <?= (int)round($dette->getMontantRestant() / 2) ?>)" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); color: var(--text-main); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">50% (<?= round($dette->getMontantRestant() / 2) ?> F)</button>
                                         </div>
-
                                         <!-- Form fields grid -->
                                         <form method="POST" action="<?php Helpers::pathUrl('dettes/rembourser'); ?>" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
                                             <input type="hidden" name="action" value="add_payment">

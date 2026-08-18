@@ -15,26 +15,21 @@ class Dette
     private ?string $dateDette;
     private ?string $dateEcheance;
 
-    private int $venteId;
-    private ?Vente $vente = null;
-
-    private int $clientId;
-    private ?Client $client = null;
-    
-    private int $statutDetteId;
-    private ?StatutDette $statutDette = null;
+    private Vente $vente ;
+    private Client $client ;
+    private StatutDette $statutDette ;
     
     private array $paiements = [];
 
-    public function __construct( string $ref, int $venteId, int $clientId, int $statutDetteId, 
-        float $montantInitial, float $montantVerse = 0.0, ?float $montantRestant = null, 
-        ?string $dateEcheance = null, ?int $id = null, ?string $dateDette = null
+    public function __construct(string $ref, Vente $vente, Client $client, StatutDette $statutDette,float $montantInitial, 
+                                float $montantRestant , ?string $dateEcheance=null , ?int $id = null, ?string $dateDette = null,
+                                float $montantVerse = 0.0,
     ) {
         $this->id = $id;
         $this->ref = $ref;
-        $this->venteId = $venteId;
-        $this->clientId = $clientId;
-        $this->statutDetteId = $statutDetteId;
+        $this->vente = $vente;
+        $this->client = $client;
+        $this->statutDette = $statutDette;
         $this->montantInitial = $montantInitial;
         $this->montantVerse = $montantVerse;
         $this->montantRestant = $montantRestant ?? max(0.0, $montantInitial - $montantVerse);
@@ -113,74 +108,64 @@ class Dette
         $this->dateEcheance = $dateEcheance;
     }
 
+
+
+    
     public function getVenteId(): int
     {
-        return $this->venteId;
+        return $this->vente->getId();
     }
 
-    public function setVenteId(int $venteId): void
-    {
-        $this->venteId = $venteId;
-    }
-
-    public function getVente(): ?Vente
+ 
+    public function getVente(): Vente
     {
         return $this->vente;
     }
 
-    public function setVente(?Vente $vente): void
+    public function setVente(Vente $vente): void
     {
         $this->vente = $vente;
-        if ($vente !== null && $vente->getId() !== null) {
-            $this->venteId = $vente->getId();
-        }
     }
+
+
+
 
     public function getClientId(): int
     {
-        return $this->clientId;
+        return $this->client->getId();
     }
 
-    public function setClientId(int $clientId): void
-    {
-        $this->clientId = $clientId;
-    }
 
-    public function getClient(): ?Client
+    public function getClient(): Client
     {
         return $this->client;
     }
 
-    public function setClient(?Client $client): void
+    public function setClient(Client $client): void
     {
         $this->client = $client;
-        if ($client !== null && $client->getId() !== null) {
-            $this->clientId = $client->getId();
-        }
     }
+
+
 
     public function getStatutDetteId(): int
     {
-        return $this->statutDetteId;
+        return $this->statutDette->getId();
     }
 
-    public function setStatutDetteId(int $statutDetteId): void
-    {
-        $this->statutDetteId = $statutDetteId;
-    }
 
-    public function getStatutDette(): ?StatutDette
+    public function getStatutDette(): StatutDette
     {
         return $this->statutDette;
     }
 
-    public function setStatutDette(?StatutDette $statutDette): void
+    public function setStatutDette(StatutDette $statutDette): void
     {
         $this->statutDette = $statutDette;
-        if ($statutDette !== null && $statutDette->getId() !== null) {
-            $this->statutDetteId = $statutDette->getId();
-        }
     }
+
+
+
 
     public function getPaiements(): array
     {

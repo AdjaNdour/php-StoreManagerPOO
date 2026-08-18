@@ -5,21 +5,20 @@ require_once __DIR__ . '/Produit.php';
 class LigneApprovisionnement
 {
     private ?int $id;
-    private ?int $approvisionnementId;
+    private int $approvisionnementId;
     private int $quantiteAppro;
     private int $quantiteRecue;
     private float $prixAchat;
     private float $sousTotal;
-    
-    private int $produitId;
-    private ?Produit $produit = null;
+    private Produit $produit;
 
-    public function __construct(int $produitId, int $quantiteAppro, float $prixAchat, int $quantiteRecue = 0,
-        ?float $sousTotal = null, ?int $approvisionnementId = null, ?int $id = null
+    public function __construct(int $approvisionnementId, int $quantiteAppro, float $prixAchat,Produit $produit,
+                                ?float $sousTotal = null, ?int $id = null,
+                                int $quantiteRecue = 0
     ) {
         $this->id = $id;
+        $this->produit = $produit;
         $this->approvisionnementId = $approvisionnementId;
-        $this->produitId = $produitId;
         $this->quantiteAppro = $quantiteAppro;
         $this->quantiteRecue = $quantiteRecue;
         $this->prixAchat = $prixAchat;
@@ -46,28 +45,31 @@ class LigneApprovisionnement
         $this->approvisionnementId = $approvisionnementId;
     }
 
+
+
+
+
+
     public function getProduitId(): int
     {
-        return $this->produitId;
+        return $this->produit->getId();
     }
 
-    public function setProduitId(int $produitId): void
-    {
-        $this->produitId = $produitId;
-    }
-
-    public function getProduit(): ?Produit
+    public function getProduit(): Produit
     {
         return $this->produit;
     }
 
-    public function setProduit(?Produit $produit): void
+    public function setProduit(Produit $produit): void
     {
         $this->produit = $produit;
-        if ($produit !== null && $produit->getId() !== null) {
-            $this->produitId = $produit->getId();
-        }
     }
+
+
+
+
+
+
 
     public function getQuantiteAppro(): int
     {

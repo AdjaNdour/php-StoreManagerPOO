@@ -91,18 +91,50 @@ class DetteRepository
         return $paiements;
     }
 
+    public function selectProduitsByDetteId(int $detteId): array
+    {
+        $sql = "SELECT p.*,lv.quantite as quantity,lv.prix_unitaire,(lv.quantite*lv.prix_unitaire) AS sous_total
+                    FROM dettes d
+                    INNER JOIN ventes v ON v.id=d.vente_id
+                    INNER JOIN lignes_vente lv ON lv.vente_id=v.id
+                    INNER JOIN produits p ON p.id=lv.produit_id
+                WHERE d.id=:dette_id";
+
+        $tableauProduits = Database::executeQuery($this->pdo, $sql, ['dette_id' => $detteId], false);
+        $produits = [];
+        if (empty($tableauProduits)) return $produits;
+
+        foreach ($tableauProduits as $prod) {
+            $p = new Produit(
+                $prod['code'],
+                $prod['libelle'],
+                $prod['categorie'],
+                $prod['prix_vente'],
+                $prod['sous_total'],
+                $prod['quantity'],
+                $prod['seuil_alerte'],
+                null,
+                $prod["id"]
+            );
+            $produits[] = $p;
+        }
+        return $produits;
+    }
+
     public function selectActiveDettes(): array
     {
-        $sql = "SELECT d.*, 
-                       c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+        $sql = "SELECT d.*, p.libelle,
+                    c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
                        sd.nom AS statut_nom,
                        v.numero_facture, v.statut AS vente_statut
                 FROM dettes d
-                JOIN clients c ON c.id = d.client_id
-                JOIN statuts_dette sd ON sd.id = d.statut_dette_id
-                JOIN ventes v ON v.id = d.vente_id
+                INNER JOIN clients c ON c.id = d.client_id
+                INNER JOIN statuts_dette sd ON sd.id = d.statut_dette_id
+                INNER JOIN ventes v ON v.id = d.vente_id
+                INNER JOIN lignes_vente lv ON lv.vente_id = v.id
+                INNER JOIN produits p ON lv.produit_id = p.id
                 WHERE d.montant_restant > 0
-                ORDER BY d.id DESC";
+                ORDER BY d.id DESc";
 
         $tableauDettesActives = Database::query($this->pdo, $sql, false);
         $dettes = [];
@@ -127,7 +159,6 @@ class DetteRepository
                 WHERE montant_restant > 0";
 
         return Database::query($this->pdo, $sql);
-
     }
 
     private function toObjet(array $data): Dette
@@ -179,5 +210,4 @@ class DetteRepository
 
         return $dette;
     }
-
 }

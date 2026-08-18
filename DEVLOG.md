@@ -70,3 +70,49 @@
 - **Difficultés / Obstacles** :
   - tourjours la meme chose : trop d'informations en prendre en compte sans lesquelles y'aurais pas de coherence.
 
+
+
+
+
+
+
+
+
+
+## 2. Autopsie de 3 Méthodes Clés
+
+### 🔬 Méthode 1 : `Database::connexionDB()` / Singleton avec Mécanisme de Fallback
+- **Fichier** : `src/Core/Database.php`
+- **Rôle** : Fournir une instance unique de connexion PDO à l'ensemble de l'ERP via le patron de conception Singleton
+    avec bascule automatique de PostgreSQL vers SQLite local (`erp.db`) en cas de panne de serveur.
+- **Fonctionnement interne** :
+  -La méthode vérifie si `self::$pdo` est déjà instancié pour éviter toute reconnexion inutile.
+   Dans un premier bloc `try`, elle tente la connexion à PostgreSQL avec les identifiants configurés.
+   Si PostgreSQL échoue (panne réseau, service arrêté), le bloc `catch` prend le relais instantanément et instancie un connecteur PDO SQLite vers `erp.db`.
+   L'attribut statique `$driver` mémorise le driver actif (`pgsql` ou `sqlite`) pour ajuster dynamiquement certaines requêtes si nécessaire.
+
+### 🔬 Méthode 2 : `VenteService::validerVente()` 
+- **Fichier** : `src/Service/VenteService.php`
+- **Rôle** : enregistrer une vente 
+- **Fonctionnement interne** :
+  - Validation du panier : Vérifie que le panier contient au moins un produit valide et que le client sélectionné existe bien dans la base.
+  - Contrôle des stocks : Vérifie pour chaque ligne que la quantité demandée est inférieure ou égale au stock physique disponible.
+  - Contrôle de solvabilité : Calcule le reste dû éventuel (`montant_total - montant_verse`). Si une dette est générée, vérifie qu'elle ne dépasse pas la limite de crédit accordée au client.
+  - Transaction :
+     - Enregistrement de la vente dans la table `ventes`.
+     - parcourrir les lignes de l'approvisionnenement et inserer de toutes les lignes dans `lignes_vente`.
+     - decrementer immédiatemenent le stock du `produits` produit concerne .
+     - Si `montant_verse < montant_total`, creer automatiquement une dette dans la table `dettes`.
+     - `commit()` si tout réussit ; en cas d'erreur, `rollBack()` intégral pour éviter l'incoherence.
+
+### 🔬 Méthode 3 : `PaiementRepository::enregistrerPaiement()` 
+- **Fichier** : `src/Model/Repository/DetteRepository.php`
+- **Rôle** : Enregistrer un remboursement partiel ou total d'une dette client tout en maintenant la cohérence 
+- **Fonctionnement interne** :
+  - Démarre une transaction PDO (`beginTransaction()`) et verrouille la ligne de dette concernée.
+  - Vérifie que le montant du versement ne dépasse pas le solde débiteur restant.
+  - Insère un enregistrement dans la table `paiements` avec le canal sélectionné (Wave, Orange Money, Espèces, Virement) et l'utilisateur connecté.
+  - Recalcule `montant_verse` et `montant_restant`.
+  - Met à jour le statut de la dette : `SOLDEE` si `montant_restant <= 0`, sinon `NON SOLDEE`.
+  - Si la dette est totalement soldée, met automatiquement à jour le statut de la commande liée dans `ventes` à `PAYEE`.
+  - Valide la transaction avec `commit()`.

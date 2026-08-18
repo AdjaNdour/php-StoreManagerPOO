@@ -9,7 +9,9 @@ class Client
     private ?string $email;
     private float $limiteCredit;
 
-    public function __construct(string $nom,string $prenom,string $telephone,?string $email = null,float $limiteCredit = 0.0,?int $id = null
+    public function __construct(string $nom,string $prenom,string $telephone,
+                                ?string $email ,?int $id ,
+                                float $limiteCredit = 0.0
     ) {
         $this->id = $id;
         $this->nom = $nom;

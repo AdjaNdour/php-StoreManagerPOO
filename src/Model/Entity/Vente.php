@@ -16,25 +16,15 @@ class Vente
 
     private ?int $modePaiementId;
 
-    private ?int $clientId;
-    private ?Client $client = null;
+    private Client $client ;
 
-    private ?int $utilisateurId;
     private ?Utilisateur $utilisateur = null;
 
     private array $lignes = [];
 
-    public function __construct(
-        string $numeroFacture,
-        float $montantTotal = 0.0,
-        float $montantVerse = 0.0,
-        string $statut = 'PAYEE',
-        ?string $dateEcheance = null,
-        ?int $clientId = null,
-        ?int $utilisateurId = null,
-        ?int $id = null,
-        ?string $dateVente = null,
-        ?int $modePaiementId= null
+    public function __construct( Client $client , string $numeroFacture, float $montantTotal = 0.0, float $montantVerse = 0.0, string $statut = 'PAYEE', 
+                                ?string $dateEcheance = null, ?Utilisateur $utilisateur = null, 
+                                ?int $id = null, ?string $dateVente = null, ?int $modePaiementId= null
     ) {
         $this->id = $id;
         $this->numeroFacture = $numeroFacture;
@@ -42,8 +32,8 @@ class Vente
         $this->montantVerse = $montantVerse;
         $this->statut = $statut;
         $this->dateEcheance = $dateEcheance;
-        $this->clientId = $clientId;
-        $this->utilisateurId = $utilisateurId;
+        $this->client = $client;
+        $this->utilisateur = $utilisateur;
         $this->dateVente = $dateVente;
         $this->modePaiementId = $modePaiementId;
     }
@@ -118,37 +108,24 @@ class Vente
         $this->dateEcheance = $dateEcheance;
     }
 
-    public function getClientId(): ?int
+    public function getClientId(): int
     {
-        return $this->clientId;
+        return $this->client->getId();
     }
 
-    public function setClientId(?int $clientId): void
-    {
-        $this->clientId = $clientId;
-    }
-
-    public function getClient(): ?Client
+    public function getClient(): Client
     {
         return $this->client;
     }
 
-    public function setClient(?Client $client): void
+    public function setClient(Client $client): void
     {
         $this->client = $client;
-        if ($client !== null && $client->getId() !== null) {
-            $this->clientId = $client->getId();
-        }
     }
 
     public function getUtilisateurId(): ?int
     {
-        return $this->utilisateurId;
-    }
-
-    public function setUtilisateurId(?int $utilisateurId): void
-    {
-        $this->utilisateurId = $utilisateurId;
+        return $this->utilisateur->getId();
     }
 
     public function getUtilisateur(): ?Utilisateur
@@ -159,10 +136,8 @@ class Vente
     public function setUtilisateur(?Utilisateur $utilisateur): void
     {
         $this->utilisateur = $utilisateur;
-        if ($utilisateur !== null && $utilisateur->getId() !== null) {
-            $this->utilisateurId = $utilisateur->getId();
-        }
     }
+
     public function setModePaiementId(?int $modePaiementId): void
     {
         $this->modePaiementId = $modePaiementId;

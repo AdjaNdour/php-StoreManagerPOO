@@ -5,18 +5,16 @@ require_once __DIR__ . '/Produit.php';
 class LigneVente
 {
     private ?int $id;
-    private ?int $venteId;
+    private int $venteId;
     private int $quantite;
     private float $prixUnitaire;
+    private Produit $produit ;
 
-    private int $produitId;
-    private ?Produit $produit = null;
-
-    public function __construct(int $produitId, int $quantite, float $prixUnitaire, ?int $venteId = null, ?int $id = null
+    public function __construct(Produit $produit, int $quantite, float $prixUnitaire, int $venteId, ?int $id = null
     ) {
         $this->id = $id;
         $this->venteId = $venteId;
-        $this->produitId = $produitId;
+        $this->produit = $produit;
         $this->quantite = $quantite;
         $this->prixUnitaire = $prixUnitaire;
     }
@@ -43,25 +41,17 @@ class LigneVente
 
     public function getProduitId(): int
     {
-        return $this->produitId;
+        return $this->produit->getId();
     }
 
-    public function setProduitId(int $produitId): void
-    {
-        $this->produitId = $produitId;
-    }
-
-    public function getProduit(): ?Produit
+    public function getProduit(): Produit
     {
         return $this->produit;
     }
 
-    public function setProduit(?Produit $produit): void
+    public function setProduit(Produit $produit): void
     {
         $this->produit = $produit;
-        if ($produit !== null && $produit->getId() !== null) {
-            $this->produitId = $produit->getId();
-        }
     }
 
     public function getQuantite(): int

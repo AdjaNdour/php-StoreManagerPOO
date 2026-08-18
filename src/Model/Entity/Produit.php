@@ -14,11 +14,10 @@ class Produit
     private int $seuilAlerte;
     
     private ?Fournisseur $fournisseur = null;
-    private ?int $fournisseurId;
 
     public function __construct(string $code, string $libelle, string $categorie, float $prixVente, 
                                 float $coutAchat = 0.0, int $stockInitial = 0, int $seuilAlerte = 5, 
-                                ?int $fournisseurId = null, ?int $id = null
+                                ?Fournisseur $fournisseur = null, ?int $id = null
     ) {
         $this->id = $id;
         $this->code = $code;
@@ -28,7 +27,7 @@ class Produit
         $this->coutAchat = $coutAchat;
         $this->stockInitial = $stockInitial;
         $this->seuilAlerte = $seuilAlerte;
-        $this->fournisseurId = $fournisseurId;
+        $this->fournisseur = $fournisseur;
     }
 
     public function getId(): ?int
@@ -113,25 +112,19 @@ class Produit
 
     public function getFournisseurId(): ?int
     {
-        return $this->fournisseurId;
+        return $this->fournisseur->getId();
     }
 
-    public function setFournisseurId(?int $fournisseurId): void
-    {
-        $this->fournisseurId = $fournisseurId;
-    }
+ 
 
-    public function getFournisseur(): ?Fournisseur
+    public function getFournisseur(): Fournisseur
     {
         return $this->fournisseur;
     }
 
-    public function setFournisseur(?Fournisseur $fournisseur): void
+    public function setFournisseur(Fournisseur $fournisseur): void
     {
         $this->fournisseur = $fournisseur;
-        if ($fournisseur !== null && $fournisseur->getId() !== null) {
-            $this->fournisseurId = $fournisseur->getId();
-        }
     }
 
 
