@@ -8,27 +8,27 @@ class DebtService
 {
 
 
-    public function getAll(): array
+    public static function getAll(): array
     {
         return DetteRepository::selectAll();
     }
 
-    public function getActiveDebts(): array
+    public static function getActiveDebts(): array
     {
         return DetteRepository::selectActiveDettes();
     }
 
-    public function getById(int $id): ?Dette
+    public static function getById(int $id): ?Dette
     {
         return DetteRepository::selectById($id);
     }
 
-    public function getStatistiques(): array
+    public static function getStatistiques(): array
     {
         return DetteRepository::selectStatistiques();
     }
 
-    public function enregistrerPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
+    public static function enregistrerPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
     {
         if ($montant <= 0) {
             throw new Exception("Le montant du versement doit être strictement positif.");
@@ -41,7 +41,7 @@ class DebtService
         return PaiementRepository::enregistrerPaiement($detteId, $montant, $modePaiementId, $utilisateurId, $notes);
     }
 
-    public function getAllProduitsDette(int $detteId)
+    public static function getAllProduitsDette(int $detteId)
     {
         return DetteRepository::selectProduitsByDetteId($detteId);
     }

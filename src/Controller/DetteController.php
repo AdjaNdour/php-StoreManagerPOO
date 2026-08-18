@@ -6,32 +6,24 @@ require_once PATHBASE . "/src/Service/ModePaiementService.php";
 
 class DetteController extends Controller
 {
-    private DebtService $debtService;
-    private ModePaiementService $modePaiementService;
 
-    public function __construct()
-    {
-        $this->debtService = new DebtService();
-        $this->modePaiementService = new ModePaiementService();
-    }
-
-    public function getAllDettes(): void
+    public static function getAllDettes(): void
     {
 
-        $allDettes = $this->debtService->getActiveDebts();
-        $modes = $this->modePaiementService->getAll();
+        $allDettes = DebtService::getActiveDebts();
+        $modes = ModePaiementService::getAll();
 
-        $stats = $this->debtService->getStatistiques();
+        $stats = DebtService::getStatistiques();
         $clientsDebiteurs = (int)$stats['nbr_clients_dettes'];
         $creancesActives = (float)$stats['somme_montant_restant_dettes'];
         $totalRecouvrements = (float)$stats['somme_montant_verser_dettes'];
         $produitsParDette = [];
         foreach ($allDettes as $dette) {
-            $produitsParDette[$dette->getId()] = $this->debtService->getAllProduitsDette($dette->getId());
+            $produitsParDette[$dette->getId()] = DebtService::getAllProduitsDette($dette->getId());
         }
                 // Debug::dd($produitsParDette);
 
-        $this->renderViewLayout('dettes', 'base', [
+        self::renderViewLayout('dettes', 'base', [
             'allDettes' => $allDettes,
             'stats' => $stats,
             'modes' => $modes,
@@ -42,7 +34,7 @@ class DetteController extends Controller
         ]);
     }
 
-    public function enregistrerRemboursementDette(): void
+    public static function enregistrerRemboursementDette(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -51,24 +43,24 @@ class DetteController extends Controller
             $modeId = $_REQUEST['mode_paiement'] ?? 0;
 
             if ($detteId > 0 && $montant > 0) {
-                $this->debtService->enregistrerPaiement($detteId, $montant, $modeId);
+                DebtService::enregistrerPaiement($detteId, $montant, $modeId);
             }
         }
 
-        $this->redirectToRoute('dettes');
+        self::redirectToRoute('dettes');
     }
 
-    public function listerProduitsDette(): void
+    public static function listerProduitsDette(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $detteId = (int)($_REQUEST['dette_id'] ?? 0);
 
             if ($detteId > 0) {
-                $this->debtService->getAllProduitsDette($detteId);
+                DebtService::getAllProduitsDette($detteId);
             }
         }
 
-        $this->redirectToRoute('dettes');
+        self::redirectToRoute('dettes');
     }
 }
