@@ -1,159 +1,194 @@
 <?php
-require_once PATHBASE . "/src/Service/VenteService.php";
-require_once PATHBASE . "/src/Service/ClientService.php";
-require_once PATHBASE . "/src/Service/ProduitService.php";
-require_once PATHBASE . "/src/Service/ModePaiementService.php";
 
-class POSController extends Controller
+namespace App\Controller;
+
+use App\Core\Controller;
+use App\Core\SessionManager;
+use App\Core\Request;
+use App\Core\Validator;
+use App\Service\VenteService;
+use App\Service\ProduitService;
+use App\Service\ClientService;
+use App\Service\ModePaiementService;
+use App\Model\Entity\Vente;
+use App\Model\Entity\LigneVente;
+use App\Model\Entity\Client;
+use App\Model\Entity\Utilisateur;
+use App\Model\DTO\FilteredModel;
+use App\Model\DTO\PaginationModel;
+use Exception;
+
+class POSController
 {
-
     public static function getAllVente(): void
     {
-        if (!isset($_SESSION['vente']['panier'])) $_SESSION['vente']['panier'] = [];
-        if (!isset($_SESSION['vente']['montantTotal'])) $_SESSION['vente']['montantTotal'] = 0;
+        $page = (int)Request::get('page', 1);
+        $search = (string)Request::get('search', '');
+        $statut = (string)Request::get('statut', 'ALL');
+        $clientId = (int)Request::get('client_id', 0);
 
-        $allVentes = VenteService::getAll();
-        $stats = VenteService::getStatistiques();
+        $filtered = new FilteredModel([
+            'search' => $search,
+            'statut' => $statut,
+            'client_id' => $clientId
+        ]);
+
+        $pagination = new PaginationModel(page: $page, limit: 4);
+
+        $ventes = VenteService::getAllVentesFiltered($filtered, $pagination);
         $produits = ProduitService::getAll();
         $clients = ClientService::getAll();
-        $modePaiement = ModePaiementService::getAll();
-        
-        $panier = $_SESSION['vente']['panier'];
-        $montantTotalPanier = $_SESSION['vente']['montantTotal'];
+        $modesPaiement = ModePaiementService::getAll();
+        $statistiques = VenteService::getStatistiques();
 
-        $nbrVentes = (int)$stats['nbr_ventes'];
-        $montantTotal = (float)$stats['montant_total'];
-        $montantEncaisse = (float)$stats['montant_encaisse'];
+        $panier = SessionManager::getData('pos_cart') ?? [];
+        $panierTotal = 0;
+        foreach ($panier as $item) {
+            $panierTotal += ($item['quantite'] * $item['prix_vente']);
+        }
 
-        self::renderViewLayout('pos', 'base', [
-            'allVentes' => $allVentes,
-            'nbrVentes' => $nbrVentes,
-            'montantTotal' => $montantTotal,
-            'montantEncaisse' => $montantEncaisse,
+        Controller::renderViewLayout("pos", "base", [
+            'ventes' => $ventes,
+            'allVentes' => $ventes,
             'produits' => $produits,
             'clients' => $clients,
-            'modePaiement' => $modePaiement,
+            'modesPaiement' => $modesPaiement,
+            'modePaiement' => $modesPaiement,
+            'statistiques' => $statistiques,
+            'stats' => $statistiques,
             'panier' => $panier,
-            'montantTotalPanier' => $montantTotalPanier
+            'panierTotal' => $panierTotal,
+            'montantTotalPanier' => $panierTotal,
+            'pagination' => $pagination,
+            'filtered' => $filtered,
+            'filteredTableau' => $filtered,
+            'currentPage' => 'pos'
         ]);
     }
 
     public static function ajouterAuPanier(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            self::redirectToRoute('pos');
-            return;
+        if (Request::isPost()) {
+            $produitId = (int)Request::post('produit_id', 0);
+            $quantite = (int)Request::post('quantite', 1);
+
+            $errors = [];
+            Validator::isGreaterThanZero($produitId, 'produit_id', $errors, "Veuillez choisir un article.");
+            Validator::isGreaterThanZero($quantite, 'quantite', $errors, "La quantité doit être supérieure à zéro.");
+
+            if (!Validator::hasErrors($errors)) {
+                $produit = ProduitService::getById($produitId);
+                if ($produit) {
+                    $panier = SessionManager::getData('pos_cart') ?? [];
+
+                    $qteExistante = isset($panier[$produitId]) ? $panier[$produitId]['quantite'] : 0;
+                    $qteTotale = $qteExistante + $quantite;
+
+                    if ($produit->getStockInitial() >= $qteTotale) {
+                        $panier[$produitId] = [
+                            'id' => $produit->getId(),
+                            'code' => $produit->getCode(),
+                            'libelle' => $produit->getLibelle(),
+                            'prix_vente' => $produit->getPrixVente(),
+                            'prix_unitaire' => $produit->getPrixVente(),
+                            'quantite' => $qteTotale,
+                            'montant' => $qteTotale * $produit->getPrixVente(),
+                            'sous_total' => $qteTotale * $produit->getPrixVente(),
+                        ];
+                        SessionManager::saveData('pos_cart', $panier);
+                    }
+                }
+            }
         }
 
-        $produitId = (int)($_POST['produit_id'] ?? 0);
-        $quantite = (int)($_POST['quantite'] ?? 0);
-
-        if ($produitId <= 0 || $quantite <= 0) throw new Exception("Produit ou quantité invalide.");
-
-        $produit = ProduitService::getById($produitId);
-
-        if ($produit === null) throw new Exception("Produit introuvable.");
-        if ($quantite > $produit->getStockInitial()) throw new Exception("Stock insuffisant.");
-
-        $prixUnitaire = $produit->getPrixVente();
-
-        $ligne = [
-            'produit_id' => $produit->getId(),
-            'libelle' => $produit->getLibelle(),
-            'quantite' => $quantite,
-            'prix_unitaire' => $prixUnitaire,
-            'montant' => $quantite * $prixUnitaire
-        ];
-
-        self::ajouterLignePanier($ligne);
-        self::redirectToRoute('pos');
-    }
-
-    private function ajouterLignePanier(array $ligne): void
-    {
-        if (!isset($_SESSION['vente']['panier'])) $_SESSION['vente']['panier'] = [];
-        if (!isset($_SESSION['vente']['montantTotal'])) $_SESSION['vente']['montantTotal'] = 0;
-        $_SESSION['vente']['panier'][] = $ligne;
-        $_SESSION['vente']['montantTotal'] += $ligne['montant'];
+        Controller::redirectToRoute("pos");
     }
 
     public static function supprimerDuPanier(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            self::redirectToRoute('pos');
-            return;
+        $produitId = (int)(Request::input('produit_id') ?? Request::input('index') ?? 0);
+        $panier = SessionManager::getData('pos_cart') ?? [];
+
+        if (isset($panier[$produitId])) {
+            unset($panier[$produitId]);
+            SessionManager::saveData('pos_cart', $panier);
         }
 
-        $index = (int)($_POST['index'] ?? -1);
-
-        if (isset($_SESSION['vente']['panier'][$index])) {
-            $ligne = $_SESSION['vente']['panier'][$index];
-            $_SESSION['vente']['montantTotal'] -= $ligne['montant'];
-            array_splice($_SESSION['vente']['panier'], $index, 1);
-        }
-
-        self::redirectToRoute('pos');
+        Controller::redirectToRoute("pos");
     }
 
     public static function validerVente(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            self::redirectToRoute('pos');
-            return;
+        if (Request::isPost()) {
+            $btnAction = Request::post('btnSaveVente');
+            if ($btnAction === 'addPanier') {
+                self::ajouterAuPanier();
+                return;
+            }
+            if ($btnAction === 'clearPanier') {
+                SessionManager::removeData('pos_cart');
+                Controller::redirectToRoute("pos");
+                return;
+            }
+
+            $panier = SessionManager::getData('pos_cart') ?? [];
+            if (empty($panier)) {
+                Controller::redirectToRoute("pos");
+                return;
+            }
+
+            $clientId = (int)Request::post('client_id', 0);
+            $modePaiementId = (int)(Request::post('mode_paiement_id') ?? Request::post('mode_reglement') ?? 1);
+            if ($modePaiementId <= 0) {
+                $modePaiementId = 1;
+            }
+
+            $montantVerse = (float)Request::post('montant_verse', 0);
+            $dateEcheance = Request::post('date_echeance', null);
+
+            $errors = [];
+            Validator::isGreaterThanZero($clientId, 'client_id', $errors, "Le client est obligatoire.");
+            Validator::isPositive($montantVerse, 'montant_verse', $errors, "Le montant versé doit être positif.");
+
+            if (!Validator::hasErrors($errors)) {
+                $client = ClientService::getById($clientId);
+                if ($client) {
+                    $numeroFacture = VenteService::genererNumeroFacture();
+
+                    $user = SessionManager::getData(KEY_USERCONNECT);
+                    $utilisateur = ($user instanceof Utilisateur) ? $user : null;
+
+                    $vente = new Vente(
+                        client: $client,
+                        numeroFacture: $numeroFacture,
+                        montantVerse: $montantVerse,
+                        dateEcheance: !empty($dateEcheance) ? $dateEcheance : null,
+                        utilisateur: $utilisateur,
+                        modePaiementId: $modePaiementId
+                    );
+
+                    foreach ($panier as $item) {
+                        $prd = ProduitService::getById((int)$item['id']);
+                        if ($prd) {
+                            $ligne = new LigneVente(
+                                produit: $prd,
+                                quantite: (int)$item['quantite'],
+                                prixUnitaire: (float)$item['prix_vente']
+                            );
+                            $vente->ajouterLigne($ligne);
+                        }
+                    }
+
+                    try {
+                        VenteService::validerVente($vente);
+                        SessionManager::removeData('pos_cart');
+                    } catch (Exception $e) {
+                        // Error handled
+                    }
+                }
+            }
         }
 
-        $action = $_POST['btnSaveVente'];
-
-        if ($action === 'addPanier') {
-            self::ajouterAuPanier();
-            return;
-        }
-
-        $clientId = (int)($_POST['client_id'] ?? 0);
-        $montantVerse = (float)($_POST['montant_verse'] ?? 0);
-        $modePaiementId = (int)($_POST['mode_reglement'] ?? 0);
-        $panier = $_SESSION['vente']['panier'] ?? [];
-
-        if ($clientId <= 0) throw new Exception("Un client est obligatoire.");
-        if (empty($panier)) throw new Exception("Le panier est vide.");
-        if ($modePaiementId <= 0) throw new Exception("Le mode de règlement est obligatoire.");
-        if ($montantVerse < 0) throw new Exception("Le montant versé est invalide.");
-
-        $lignes = [];
-
-        foreach ($panier as $ligne) {
-            $ligneVente = new LigneVente(
-                (int)$ligne['produit_id'],
-                (int)$ligne['quantite'],
-                (float)$ligne['prix_unitaire']
-            );
-            $lignes[] = $ligneVente;
-        }
-
-        $numeroFacture = 'CMD-' . time();
-
-        $vente = new Vente(
-            $numeroFacture,
-            0,
-            $montantVerse,
-            'PAYEE',
-            null,
-            $clientId,
-            null,
-            null,
-            date('Y-m-d')
-        );
-
-        $vente->setModePaiementId($modePaiementId);
-
-        foreach ($lignes as $ligne) {
-            $vente->ajouterLigne($ligne);
-        }
-        VenteService::validerVente($vente);
-
-        $_SESSION['vente']['panier'] = [];
-        $_SESSION['vente']['montantTotal'] = 0;
-
-        self::redirectToRoute('pos');
+        Controller::redirectToRoute("pos");
     }
 }

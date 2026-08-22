@@ -73,12 +73,6 @@
 
 
 
-
-
-
-
-
-
 ## 2. Autopsie de 3 Méthodes Clés
 
 ### 🔬 Méthode 1 : `Database::connexionDB()` / Singleton avec Mécanisme de Fallback

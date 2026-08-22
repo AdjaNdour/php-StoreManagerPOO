@@ -1,0 +1,108 @@
+/* =========================================
+   AUTH & LOGIN STYLES - STOREMANAGER PRO
+========================================= */
+
+.login-grid {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-color);
+    z-index: 9999;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    font-family: var(--font-family);
+    color: var(--text-main);
+}
+
+.login-hero-panel {
+    background: linear-gradient(135deg, #0b0f19 0%, #111827 50%, #0d1b2a 100%);
+    border-right: 1px solid var(--border-color);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: var(--text-main);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-form-panel {
+    background: #0f1523;
+    padding: 48px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+    color: var(--text-main);
+}
+
+.quick-profiles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.quick-profile-card {
+    background: rgba(22, 30, 49, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-profile-card.active {
+    background: rgba(22, 30, 49, 0.75);
+    border: 2px solid var(--accent);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar.admin {
+    background: rgba(45, 212, 191, 0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.profile-avatar.vente {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+}
+
+.profile-avatar.stock {
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid var(--warning);
+    color: var(--warning);
+}
+
+.profile-avatar.inventaire {
+    background: rgba(192, 132, 252, 0.15);
+    border: 1px solid #c084fc;
+    color: #c084fc;
+}
+
+@media (max-width: 900px) {
+    .login-grid {
+        grid-template-columns: 1fr;
+    }
+    .login-hero-panel {
+        display: none;
+    }
+    .login-form-panel {
+        padding: 32px 24px;
+    }
+}

@@ -1,6 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Fournisseur.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class Produit
 {
@@ -12,12 +14,18 @@ class Produit
     private float $coutAchat;
     private int $stockInitial;
     private int $seuilAlerte;
-    
     private ?Fournisseur $fournisseur = null;
 
-    public function __construct(string $code, string $libelle, string $categorie, float $prixVente, 
-                                float $coutAchat = 0.0, int $stockInitial = 0, int $seuilAlerte = 5, 
-                                ?Fournisseur $fournisseur = null, ?int $id = null
+    public function __construct(
+        string $code,
+        string $libelle,
+        string $categorie,
+        float $prixVente,
+        float $coutAchat = 0.0,
+        int $stockInitial = 0,
+        int $seuilAlerte = 5,
+        ?Fournisseur $fournisseur = null,
+        ?int $id = null
     ) {
         $this->id = $id;
         $this->code = $code;
@@ -112,20 +120,43 @@ class Produit
 
     public function getFournisseurId(): ?int
     {
-        return $this->fournisseur->getId();
+        return $this->fournisseur?->getId();
     }
 
- 
-
-    public function getFournisseur(): Fournisseur
+    public function getFournisseur(): ?Fournisseur
     {
         return $this->fournisseur;
     }
 
-    public function setFournisseur(Fournisseur $fournisseur): void
+    public function setFournisseur(?Fournisseur $fournisseur): void
     {
         $this->fournisseur = $fournisseur;
     }
 
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->produit_id ?? $obj->id ?? null;
+        $code = $obj->produit_code ?? $obj->code ?? '';
+        $libelle = $obj->produit_libelle ?? $obj->libelle ?? '';
+        $categorie = $obj->produit_categorie ?? $obj->categorie ?? '';
+        $prixVente = $obj->prix_vente ?? 0;
+        $coutAchat = $obj->cout_achat ?? 0;
+        $stockInitial = $obj->stock_initial ?? $obj->stock ?? $obj->quantite ?? 0;
+        $seuilAlerte = $obj->seuil_alerte ?? 5;
 
+        $hasFournisseur = isset($obj->fournisseur_nom);
+        $fournisseur = $hasFournisseur ? Fournisseur::toEntity($obj) : null;
+
+        return new self(
+            code: (string)$code,
+            libelle: (string)$libelle,
+            categorie: (string)$categorie,
+            prixVente: (float)$prixVente,
+            coutAchat: (float)$coutAchat,
+            stockInitial: (int)$stockInitial,
+            seuilAlerte: (int)$seuilAlerte,
+            fournisseur: $fournisseur,
+            id: $id !== null ? (int)$id : null
+        );
+    }
 }

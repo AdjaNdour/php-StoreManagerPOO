@@ -1,73 +1,72 @@
 <?php
 
+namespace App\Core;
+
+use PDO;
+use Exception;
+use PDOException;
+use stdClass;
+
 class Database
 {
-    private static ?PDO $instanceDB = null;
-    private static string $driver = 'sql';
+    private static ?PDO $pdo = null;
 
-    public static function connexionDB(): PDO
+    public static function getInstance(): PDO
     {
-        if (self::$instanceDB === null) {
-
+        if (self::$pdo === null) {
             try {
-                self::$instanceDB = new PDO("pgsql:host=localhost;port=5432;dbname=storemanagerpro", "postgres", "kiki");
-                self::$driver = 'pgsql';
-
+                self::$pdo = new PDO("pgsql:host=localhost;port=5432;dbname=storemanagerpro", "postgres", "kiki", [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]);
             } catch (Exception $e) {
-
-                self::$instanceDB = new PDO("sqlite:" . dirname(__DIR__) . "/erp.db");
-                self::$driver = 'sqlite';
+                $dbPath = dirname(__DIR__, 2) . "/erp.db";
+                self::$pdo = new PDO("sqlite:" . $dbPath, null, null, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]);
             }
-            self::$instanceDB->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            self::$instanceDB->setAttribute( PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         }
-        return self::$instanceDB;
+
+        return self::$pdo;
     }
 
-    public static function getInstanceDB(): PDO
+    public static function executeQuery(string $sql, array $params = [], bool $single = false): mixed
     {
-        return self::connexionDB();
-    }
+        $stmt = self::getInstance()->prepare($sql);
+        $stmt->execute($params);
 
-    public static function getDriver(): string
-    {
-        return self::$driver;
-    }
-
-    public static function query(PDO $pdo, string $sql, bool $single = true): array|false
-    {
-        $stmt = $pdo->query($sql);
-        return $single ? $stmt->fetch() : $stmt->fetchAll();
-    }
-
-    public static function prepare(PDO $pdo, string $sql, array $datas = []): PDOStatement
-    {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($datas);
-        return $stmt;
-    }
-
-    public static function executeQuery(PDO $pdo, string $sql, array $datas = [], bool $single = true): array|false
-    {
-        $statement = self::prepare($pdo, $sql, $datas);
-        return $single ? $statement->fetch() : $statement->fetchAll();
-    }
-
-    public static function executeUpdate(PDO $pdo, string $sql, array $datas = []): int
-    {
-        $statement = self::prepare($pdo, $sql, $datas);
-        $trimSql = strtoupper(trim($sql));
-        if (str_starts_with($trimSql, 'INSERT')) {
-            return (int) $pdo->lastInsertId();
+        if ($single) {
+            return $stmt->fetch();
         }
-        return $statement->rowCount();
+
+        return $stmt->fetchAll();
     }
 
-    public static function getAllTable(string $table): array
+    public static function query(string $sql, bool $single = false): mixed
     {
-        $pdo = self::connexionDB();
-        $sql = "SELECT * FROM {$table}";
-        $res = self::query($pdo, $sql, false);
-        return is_array($res) ? $res : [];
+        $stmt = self::getInstance()->query($sql);
+
+        if ($single) {
+            return $stmt->fetch();
+        }
+
+        return $stmt->fetchAll();
+    }
+
+    public static function executeUpdate(string $sql, array $params = []): int
+    {
+        $stmt = self::getInstance()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->rowCount();
+    }
+
+    public static function getLastId(string $table, string $primaryKey = 'id'): int
+    {
+        $sql = "SELECT COALESCE(MAX($primaryKey), 0) AS max_id FROM $table";
+        $result = self::query($sql, true);
+        return (int)($result->max_id ?? 0);
     }
 }

@@ -1,6 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Role.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class Utilisateur
 {
@@ -11,11 +13,17 @@ class Utilisateur
     private string $password;
     private ?string $adresse;
     private ?string $telephone;
+    private ?Role $role;
 
-    private Role $role;
-
-    public function __construct(string $nom, string $prenom, string $email, string $password, Role $role, 
-                                ?string $adresse = null, ?string $telephone = null, ?int $id = null
+    public function __construct(
+        string $nom,
+        string $prenom,
+        string $email,
+        string $password,
+        ?Role $role = null,
+        ?string $adresse = null,
+        ?string $telephone = null,
+        ?int $id = null
     ) {
         $this->id = $id;
         $this->nom = $nom;
@@ -59,7 +67,7 @@ class Utilisateur
 
     public function getNomComplet(): string
     {
-        return $this->prenom . ' ' . $this->nom;
+        return trim($this->prenom . ' ' . $this->nom);
     }
 
     public function getEmail(): string
@@ -102,17 +110,17 @@ class Utilisateur
         $this->telephone = $telephone;
     }
 
-    public function getRoleId(): int
+    public function getRoleId(): ?int
     {
-        return $this->role->getId();
+        return $this->role?->getId();
     }
 
-    public function getRole(): Role
+    public function getRole(): ?Role
     {
         return $this->role;
     }
 
-    public function setRole(Role $role): void
+    public function setRole(?Role $role): void
     {
         $this->role = $role;
     }
@@ -123,5 +131,29 @@ class Utilisateur
             return true;
         }
         return $plainPassword === $this->password || $plainPassword === 'demo1234';
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->utilisateur_id ?? $obj->user_id ?? $obj->id ?? null;
+        $nom = $obj->utilisateur_nom ?? $obj->nom_utilisateur ?? $obj->nom ?? '';
+        $prenom = $obj->utilisateur_prenom ?? $obj->prenom_utilisateur ?? $obj->prenom ?? '';
+        $email = $obj->email ?? $obj->login ?? '';
+        $password = $obj->password ?? '';
+        $adresse = $obj->adresse ?? null;
+        $telephone = $obj->telephone ?? null;
+
+        $role = Role::toEntity($obj);
+
+        return new self(
+            nom: (string)$nom,
+            prenom: (string)$prenom,
+            email: (string)$email,
+            password: (string)$password,
+            role: $role,
+            adresse: $adresse ? (string)$adresse : null,
+            telephone: $telephone ? (string)$telephone : null,
+            id: $id !== null ? (int)$id : null
+        );
     }
 }

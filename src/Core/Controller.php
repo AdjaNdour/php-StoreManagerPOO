@@ -1,27 +1,30 @@
 <?php
 
+namespace App\Core;
+
 abstract class Controller
 {
-    public function renderView(string $file, array $data = []): void
+    public static function renderView(string $folder, array $data = []): void
     {
         $viewData = $data;
-        require_once(PATHBASE . "/app/views/$file.html.php");
+        extract($data);
+        require(PATHBASE . "/src/Views/$folder/index.php");
     }
 
-    public function redirectToRoute(string $uri): void
+    public static function redirectToRoute(string $uri): void
     {
-        header("Location:" . WEB_ROUTE ."/". $uri);
+        $target = WEB_ROUTE . ($uri !== '' ? '/' . ltrim($uri, '/') : '/');
+        header("Location: " . $target);
         exit;
     }
 
-    public function renderViewLayout(string $folder, string $layout, array $data = []): void
+    public static function renderViewLayout(string $folder, string $layout, array $data = []): void
     {
         $viewData = $data;
+        extract($data);
         ob_start();
-        require_once(PATHBASE . "/src/Views/$folder/index.php");
-
+        require(PATHBASE . "/src/Views/$folder/index.php");
         $contentView = ob_get_clean();
-
-        require_once(PATHBASE . "/src/Views/layout/$layout.php");
+        require(PATHBASE . "/src/Views/layout/$layout.php");
     }
 }

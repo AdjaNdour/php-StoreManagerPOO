@@ -1,5 +1,9 @@
 <?php
 
+namespace App\Model\Entity;
+
+use stdClass;
+
 class Fournisseur
 {
     private ?int $id;
@@ -8,9 +12,13 @@ class Fournisseur
     private string $telephone;
     private ?string $adresse;
 
-    public function __construct(string $nom, string $telephone, ?string $email = null, ?string $adresse = null, 
-                                ?int $id = null)
-    {
+    public function __construct(
+        string $nom,
+        string $telephone,
+        ?string $email = null,
+        ?string $adresse = null,
+        ?int $id = null
+    ) {
         $this->id = $id;
         $this->nom = $nom;
         $this->telephone = $telephone;
@@ -66,5 +74,22 @@ class Fournisseur
     public function setAdresse(?string $adresse): void
     {
         $this->adresse = $adresse;
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->fournisseur_id ?? $obj->id ?? null;
+        $nom = $obj->fournisseur_nom ?? $obj->nom ?? '';
+        $telephone = $obj->fournisseur_telephone ?? $obj->telephone ?? '';
+        $email = $obj->fournisseur_email ?? $obj->email ?? null;
+        $adresse = $obj->fournisseur_adresse ?? $obj->adresse ?? null;
+
+        return new self(
+            nom: (string)$nom,
+            telephone: (string)$telephone,
+            email: $email ? (string)$email : null,
+            adresse: $adresse ? (string)$adresse : null,
+            id: $id !== null ? (int)$id : null
+        );
     }
 }

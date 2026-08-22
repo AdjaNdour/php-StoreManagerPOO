@@ -1,9 +1,9 @@
 <?php
 
-require_once __DIR__ . '/Client.php';
-require_once __DIR__ . '/Vente.php';
-require_once __DIR__ . '/StatutDette.php';
-require_once __DIR__ . '/Paiement.php';
+namespace App\Model\Entity;
+
+use stdClass;
+use Exception;
 
 class Dette
 {
@@ -14,16 +14,23 @@ class Dette
     private float $montantRestant;
     private ?string $dateDette;
     private ?string $dateEcheance;
-
-    private Vente $vente ;
-    private Client $client ;
-    private StatutDette $statutDette ;
-    
+    private Vente $vente;
+    private Client $client;
+    private StatutDette $statutDette;
     private array $paiements = [];
+    private array $lignes = [];
 
-    public function __construct(string $ref, Vente $vente, Client $client, StatutDette $statutDette,float $montantInitial, 
-                                float $montantRestant , ?string $dateEcheance=null , ?int $id = null, ?string $dateDette = null,
-                                float $montantVerse = 0.0,
+    public function __construct(
+        string $ref,
+        Vente $vente,
+        Client $client,
+        StatutDette $statutDette,
+        float $montantInitial,
+        float $montantRestant,
+        ?string $dateEcheance = null,
+        ?int $id = null,
+        ?string $dateDette = null,
+        float $montantVerse = 0.0
     ) {
         $this->id = $id;
         $this->ref = $ref;
@@ -32,7 +39,7 @@ class Dette
         $this->statutDette = $statutDette;
         $this->montantInitial = $montantInitial;
         $this->montantVerse = $montantVerse;
-        $this->montantRestant = $montantRestant ?? max(0.0, $montantInitial - $montantVerse);
+        $this->montantRestant = $montantRestant;
         $this->dateEcheance = $dateEcheance;
         $this->dateDette = $dateDette;
     }
@@ -108,15 +115,11 @@ class Dette
         $this->dateEcheance = $dateEcheance;
     }
 
-
-
-    
     public function getVenteId(): int
     {
-        return $this->vente->getId();
+        return $this->vente->getId() ?? 0;
     }
 
- 
     public function getVente(): Vente
     {
         return $this->vente;
@@ -127,14 +130,10 @@ class Dette
         $this->vente = $vente;
     }
 
-
-
-
     public function getClientId(): int
     {
-        return $this->client->getId();
+        return $this->client->getId() ?? 0;
     }
-
 
     public function getClient(): Client
     {
@@ -146,13 +145,10 @@ class Dette
         $this->client = $client;
     }
 
-
-
     public function getStatutDetteId(): int
     {
-        return $this->statutDette->getId();
+        return $this->statutDette->getId() ?? 1;
     }
-
 
     public function getStatutDette(): StatutDette
     {
@@ -163,9 +159,6 @@ class Dette
     {
         $this->statutDette = $statutDette;
     }
-
-
-
 
     public function getPaiements(): array
     {
@@ -180,6 +173,16 @@ class Dette
     public function ajouterPaiement(Paiement $paiement): void
     {
         $this->paiements[] = $paiement;
+    }
+
+    public function getLignes(): array
+    {
+        return $this->lignes;
+    }
+
+    public function setLignes(array $lignes): void
+    {
+        $this->lignes = $lignes;
     }
 
     public function enregistrerReglement(float $montant): void
@@ -206,5 +209,33 @@ class Dette
             return false;
         }
         return strtotime($this->dateEcheance) < strtotime(date('Y-m-d'));
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->dette_id ?? $obj->id ?? null;
+        $ref = $obj->ref ?? '';
+        $montantInitial = $obj->montant_initial ?? 0;
+        $montantVerse = $obj->montant_verse ?? 0;
+        $montantRestant = $obj->montant_restant ?? max(0.0, (float)$montantInitial - (float)$montantVerse);
+        $dateDette = $obj->date_dette ?? null;
+        $dateEcheance = $obj->date_echeance ?? null;
+
+        $client = Client::toEntity($obj);
+        $vente = Vente::toEntity($obj);
+        $statutDette = StatutDette::toEntity($obj);
+
+        return new self(
+            ref: (string)$ref,
+            vente: $vente,
+            client: $client,
+            statutDette: $statutDette,
+            montantInitial: (float)$montantInitial,
+            montantRestant: (float)$montantRestant,
+            dateEcheance: $dateEcheance ? (string)$dateEcheance : null,
+            id: $id !== null ? (int)$id : null,
+            dateDette: $dateDette ? (string)$dateDette : null,
+            montantVerse: (float)$montantVerse
+        );
     }
 }

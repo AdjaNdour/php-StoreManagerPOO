@@ -1,6 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Produit.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class LigneApprovisionnement
 {
@@ -12,9 +14,14 @@ class LigneApprovisionnement
     private float $sousTotal;
     private Produit $produit;
 
-    public function __construct(int $approvisionnementId, int $quantiteAppro, float $prixAchat,Produit $produit,
-                                ?float $sousTotal = null, ?int $id = null,
-                                int $quantiteRecue = 0
+    public function __construct(
+        int $approvisionnementId,
+        int $quantiteAppro,
+        float $prixAchat,
+        Produit $produit,
+        ?float $sousTotal = null,
+        ?int $id = null,
+        int $quantiteRecue = 0
     ) {
         $this->id = $id;
         $this->produit = $produit;
@@ -42,17 +49,12 @@ class LigneApprovisionnement
 
     public function setApprovisionnementId(?int $approvisionnementId): void
     {
-        $this->approvisionnementId = $approvisionnementId;
+        $this->approvisionnementId = $approvisionnementId ?? 0;
     }
-
-
-
-
-
 
     public function getProduitId(): int
     {
-        return $this->produit->getId();
+        return $this->produit->getId() ?? 0;
     }
 
     public function getProduit(): Produit
@@ -64,12 +66,6 @@ class LigneApprovisionnement
     {
         $this->produit = $produit;
     }
-
-
-
-
-
-
 
     public function getQuantiteAppro(): int
     {
@@ -111,5 +107,27 @@ class LigneApprovisionnement
     public function setSousTotal(float $sousTotal): void
     {
         $this->sousTotal = max(0.0, $sousTotal);
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->ligne_appro_id ?? $obj->id ?? null;
+        $approId = $obj->approvisionnement_id ?? 0;
+        $quantiteAppro = $obj->quantite_appro ?? 1;
+        $quantiteRecue = $obj->quantite_recue ?? 0;
+        $prixAchat = $obj->prix_achat ?? 0;
+        $sousTotal = $obj->sous_total ?? null;
+
+        $produit = Produit::toEntity($obj);
+
+        return new self(
+            approvisionnementId: (int)$approId,
+            quantiteAppro: (int)$quantiteAppro,
+            prixAchat: (float)$prixAchat,
+            produit: $produit,
+            sousTotal: $sousTotal !== null ? (float)$sousTotal : null,
+            id: $id !== null ? (int)$id : null,
+            quantiteRecue: (int)$quantiteRecue
+        );
     }
 }

@@ -1,11 +1,25 @@
 <?php
-define('PATHBASE', dirname(__DIR__));
-require_once PATHBASE . "/src/Core/SessionManager.php";
+
+if (!defined('PATHBASE')) {
+    define('PATHBASE', dirname(__DIR__));
+}
+
+if (!defined('WEB_ROUTE')) {
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($scriptDir === '/' || $scriptDir === '.') {
+        $scriptDir = '';
+    }
+    define('WEB_ROUTE', $scriptDir);
+}
+
+if (file_exists(PATHBASE . '/vendor/autoload.php')) {
+    require_once PATHBASE . '/vendor/autoload.php';
+}
+
+use App\Core\Router;
+use App\Core\SessionManager;
+
 SessionManager::sessionStart();
-require_once PATHBASE . "/src/Core/Helpers.php";
-require_once PATHBASE . "/src/Core/Debug.php";
-require_once PATHBASE . "/src/Core/Database.php";
-require_once PATHBASE . "/src/Core/Router.php";
 
 $router = new Router();
 $router->run();

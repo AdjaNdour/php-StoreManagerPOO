@@ -1,0 +1,43 @@
+/* =========================================
+   APPROVISIONNEMENTS STYLES - STOREMANAGER PRO
+========================================= */
+
+.supply-header-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.supply-receive-drawer {
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    background: linear-gradient(180deg, rgba(11, 15, 25, 0.95) 0%, rgba(11, 15, 25, 0.98) 100%);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    max-width: 850px;
+    margin: 12px 0;
+}
+
+.supply-receive-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.supply-item-input {
+    width: 100px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    background: #0b0f1a;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: white;
+}

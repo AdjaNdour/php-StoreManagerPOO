@@ -1,17 +1,55 @@
 <?php
 
-require_once dirname(__DIR__) . "/Entity/Produit.php";
+namespace App\Model\Repository;
+
+use App\Core\Database;
+use App\Model\Entity\Produit;
+use App\Model\Entity\Fournisseur;
+use App\Model\DTO\FilteredModel;
+use App\Model\DTO\PaginationModel;
+use Exception;
 
 class ProduitRepository
 {
+    public static function selectAllFiltered(FilteredModel $filtered, PaginationModel $pagination): array
+    {
+        $search = $filtered->getFilter('search');
+        $limit = $pagination->getLimit();
+        $offset = $pagination->getOffset();
+
+        $where = ["1=1"];
+        $params = [];
+
+        if (!empty($search)) {
+            $where[] = "(p.code ILIKE :search OR p.libelle ILIKE :search OR p.categorie ILIKE :search)";
+            $params['search'] = "%$search%";
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        $sqlCount = "SELECT COUNT(DISTINCT p.id) AS total FROM produits p WHERE $whereClause";
+        $countRes = Database::executeQuery($sqlCount, $params, true);
+        $total = (int)($countRes->total ?? 0);
+        $pagination->setTotalElements($total);
+
+        $sql = "SELECT p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte, p.fournisseur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.telephone AS fournisseur_telephone, f.email AS fournisseur_email, f.adresse AS fournisseur_adresse
+                FROM produits p
+                LEFT JOIN fournisseurs f ON f.id = p.fournisseur_id
+                WHERE $whereClause
+                ORDER BY p.id ASC
+                LIMIT $limit OFFSET $offset";
+
+        $results = Database::executeQuery($sql, $params, false);
+        return (!empty($results) && is_array($results)) ? array_map(fn($row) => Produit::toEntity($row), $results) : [];
+    }
+
     public static function insert(Produit $produit): int
     {
-        $pdo = Database::connexionDB();
-
         $sql = "INSERT INTO produits (code, libelle, categorie, prix_vente, cout_achat, stock_initial, seuil_alerte, fournisseur_id)
-                VALUES (:code, :libelle, :categorie, :prix_vente, :cout_achat, :stock_initial, :seuil_alerte, :fournisseur_id)";
+                VALUES (:code, :libelle, :categorie, :prix_vente, :cout_achat, :stock_initial, :seuil_alerte, :fournisseur_id) RETURNING id";
 
-        Database::executeUpdate($pdo, $sql, [
+        $res = Database::executeQuery($sql, [
             'code' => $produit->getCode(),
             'libelle' => $produit->getLibelle(),
             'categorie' => $produit->getCategorie(),
@@ -20,51 +58,51 @@ class ProduitRepository
             'stock_initial' => $produit->getStockInitial(),
             'seuil_alerte' => $produit->getSeuilAlerte(),
             'fournisseur_id' => $produit->getFournisseurId()
-        ]);
+        ], true);
 
-        $id = (int) $pdo->lastInsertId();
-
+        $id = (int)($res->id ?? 0);
         $produit->setId($id);
-
         return $id;
     }
 
     public static function selectById(int $id): ?Produit
     {
-        $pdo = Database::connexionDB();
+        $sql = "SELECT p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte, p.fournisseur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.telephone AS fournisseur_telephone, f.email AS fournisseur_email, f.adresse AS fournisseur_adresse
+                FROM produits p
+                LEFT JOIN fournisseurs f ON f.id = p.fournisseur_id
+                WHERE p.id = :id";
 
-        $sql = "SELECT * FROM produits WHERE id = :id";
+        $obj = Database::executeQuery($sql, ['id' => $id], true);
+        return $obj ? Produit::toEntity($obj) : null;
+    }
 
-        $produit = Database::executeQuery($pdo, $sql, ['id' => $id]);
+    public static function selectByCode(string $code): ?Produit
+    {
+        $sql = "SELECT p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte, p.fournisseur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.telephone AS fournisseur_telephone, f.email AS fournisseur_email, f.adresse AS fournisseur_adresse
+                FROM produits p
+                LEFT JOIN fournisseurs f ON f.id = p.fournisseur_id
+                WHERE p.code = :code LIMIT 1";
 
-        if (!$produit) return null;
-
-        return self::toObjet($produit);
+        $obj = Database::executeQuery($sql, ['code' => $code], true);
+        return $obj ? Produit::toEntity($obj) : null;
     }
 
     public static function selectAll(): array
     {
-        $pdo = Database::connexionDB();
+        $sql = "SELECT p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte, p.fournisseur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.telephone AS fournisseur_telephone, f.email AS fournisseur_email, f.adresse AS fournisseur_adresse
+                FROM produits p
+                LEFT JOIN fournisseurs f ON f.id = p.fournisseur_id
+                ORDER BY p.id ASC";
 
-        $sql = "SELECT * FROM produits ORDER BY libelle ASC";
-
-        $tableauProduits = Database::query($pdo, $sql, false);
-
-        $produits = [];
-
-        if (empty($tableauProduits)) return $produits;
-
-        foreach ($tableauProduits as $produit) {
-            $produits[] = self::toObjet($produit);
-        }
-
-        return $produits;
+        $results = Database::query($sql, false);
+        return (!empty($results) && is_array($results)) ? array_map(fn($row) => Produit::toEntity($row), $results) : [];
     }
 
     public static function update(Produit $produit): bool
     {
-        $pdo = Database::connexionDB();
-
         $sql = "UPDATE produits 
                 SET code = :code,
                     libelle = :libelle,
@@ -76,77 +114,62 @@ class ProduitRepository
                     fournisseur_id = :fournisseur_id
                 WHERE id = :id";
 
-        $nbrRowsAffecte = Database::executeUpdate(
-            $pdo,
-            $sql,
-            [
-                'id' => $produit->getId(),
-                'code' => $produit->getCode(),
-                'libelle' => $produit->getLibelle(),
-                'categorie' => $produit->getCategorie(),
-                'prix_vente' => $produit->getPrixVente(),
-                'cout_achat' => $produit->getCoutAchat(),
-                'stock_initial' => $produit->getStockInitial(),
-                'seuil_alerte' => $produit->getSeuilAlerte(),
-                'fournisseur_id' => $produit->getFournisseurId()
-            ]
-        );
+        $affected = Database::executeUpdate($sql, [
+            'id' => $produit->getId(),
+            'code' => $produit->getCode(),
+            'libelle' => $produit->getLibelle(),
+            'categorie' => $produit->getCategorie(),
+            'prix_vente' => $produit->getPrixVente(),
+            'cout_achat' => $produit->getCoutAchat(),
+            'stock_initial' => $produit->getStockInitial(),
+            'seuil_alerte' => $produit->getSeuilAlerte(),
+            'fournisseur_id' => $produit->getFournisseurId()
+        ]);
 
-        return $nbrRowsAffecte > 0 ? true : false;
+        return $affected > 0;
     }
 
     public static function delete(int $id): bool
     {
-        $pdo = Database::connexionDB();
-
         $sql = "DELETE FROM produits WHERE id = :id";
-
-        $nbrRowsAffecte = Database::executeUpdate($pdo, $sql, ['id' => $id]);
-
-        return $nbrRowsAffecte > 0 ? true : false;
-    }
-
-    private function toObjet(array $produit): Produit
-    {
-        return new Produit(
-            $produit['code'],
-            $produit['libelle'],
-            $produit['categorie'],
-            (float) $produit['prix_vente'],
-            (float) $produit['cout_achat'],
-            (int) $produit['stock_initial'],
-            (int) $produit['seuil_alerte'],
-            $produit['fournisseur_id'] !== null ? (int) $produit['fournisseur_id'] : null,
-            (int) $produit['id']
-        );
+        $affected = Database::executeUpdate($sql, ['id' => $id]);
+        return $affected > 0;
     }
 
     public static function getStock(int $produitId): int
     {
-        $pdo = Database::connexionDB();
-
         $sql = "SELECT stock_initial FROM produits WHERE id = :id";
-        $resultat = Database::executeQuery($pdo, $sql, ['id' => $produitId]);
-        if (!$resultat) {
+        $res = Database::executeQuery($sql, ['id' => $produitId], true);
+        if (!$res) {
             throw new Exception("Produit introuvable.");
         }
-        return (int) $resultat['stock_initial'];
+        return (int)($res->stock_initial ?? 0);
     }
 
     public static function updateStock(int $produitId, int $quantite): void
     {
-        $pdo = Database::connexionDB();
+        self::diminuerStock($produitId, $quantite);
+    }
 
-        $sql = " UPDATE produits SET stock_initial = stock_initial - :quantite
+    public static function diminuerStock(int $produitId, int $quantite): void
+    {
+        $sql = "UPDATE produits SET stock_initial = stock_initial - :quantite
                 WHERE id = :id AND stock_initial >= :quantite";
 
-        Database::executeUpdate(
-            $pdo,
-            $sql,
-            [
-                'quantite' => $quantite,
-                'id' => $produitId
-            ]
-        );
+        Database::executeUpdate($sql, [
+            'quantite' => $quantite,
+            'id' => $produitId
+        ]);
+    }
+
+    public static function augmenterStock(int $produitId, int $quantite): void
+    {
+        $sql = "UPDATE produits SET stock_initial = stock_initial + :quantite
+                WHERE id = :id";
+
+        Database::executeUpdate($sql, [
+            'quantite' => $quantite,
+            'id' => $produitId
+        ]);
     }
 }

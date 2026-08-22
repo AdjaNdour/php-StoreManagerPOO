@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Fournisseur.php';
-require_once __DIR__ . '/Utilisateur.php';
-require_once __DIR__ . '/LigneApprovisionnement.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class Approvisionnement
 {
@@ -11,15 +11,18 @@ class Approvisionnement
     private float $coutAchat;
     private ?string $dateAppro;
     private ?string $dateReception;
-
     private Fournisseur $fournisseur;
     private ?Utilisateur $utilisateur = null;
-
     private array $lignes = [];
 
-    public function __construct( string $referenceBl, Fournisseur $fournisseur,
-                                ?string $dateReception,?int $id , ?string $dateAppro , ?Utilisateur $utilisateur,
-                                 float $coutAchat = 0.0,
+    public function __construct(
+        string $referenceBl,
+        Fournisseur $fournisseur,
+        ?string $dateReception = null,
+        ?int $id = null,
+        ?string $dateAppro = null,
+        ?Utilisateur $utilisateur = null,
+        float $coutAchat = 0.0
     ) {
         $this->id = $id;
         $this->referenceBl = $referenceBl;
@@ -92,7 +95,7 @@ class Approvisionnement
 
     public function getFournisseurId(): int
     {
-        return $this->fournisseur->getId();
+        return $this->fournisseur->getId() ?? 0;
     }
 
     public function getUtilisateur(): ?Utilisateur
@@ -118,5 +121,28 @@ class Approvisionnement
     public function ajouterLigne(LigneApprovisionnement $ligne): void
     {
         $this->lignes[] = $ligne;
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->appro_id ?? $obj->approvisionnement_id ?? $obj->id ?? null;
+        $referenceBl = $obj->reference_bl ?? '';
+        $coutAchat = $obj->cout_achat ?? 0;
+        $dateAppro = $obj->date_appro ?? null;
+        $dateReception = $obj->date_reception ?? null;
+
+        $fournisseur = Fournisseur::toEntity($obj);
+        $hasUser = isset($obj->nom_utilisateur) || isset($obj->utilisateur_id);
+        $utilisateur = $hasUser ? Utilisateur::toEntity($obj) : null;
+
+        return new self(
+            referenceBl: (string)$referenceBl,
+            fournisseur: $fournisseur,
+            dateReception: $dateReception ? (string)$dateReception : null,
+            id: $id !== null ? (int)$id : null,
+            dateAppro: $dateAppro ? (string)$dateAppro : null,
+            utilisateur: $utilisateur,
+            coutAchat: (float)$coutAchat
+        );
     }
 }

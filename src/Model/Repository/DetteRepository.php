@@ -1,218 +1,225 @@
 <?php
 
-require_once dirname(__DIR__) . "/Entity/Dette.php";
-require_once dirname(__DIR__) . "/Entity/Paiement.php";
-require_once dirname(__DIR__) . "/Entity/ModePaiement.php";
-require_once dirname(__DIR__) . "/Entity/LigneVente.php";
-require_once dirname(__DIR__) . "/Entity/Client.php";
+namespace App\Model\Repository;
+
+use App\Core\Database;
+use App\Model\Entity\Dette;
+use App\Model\Entity\Paiement;
+use App\Model\Entity\LigneVente;
+use App\Model\Entity\Client;
+use App\Model\Entity\StatutDette;
+use App\Model\DTO\FilteredModel;
+use App\Model\DTO\PaginationModel;
 
 class DetteRepository
 {
+    public static function selectAllDettesFiltered(FilteredModel $filtered, PaginationModel $pagination): array
+    {
+        $search = $filtered->getFilter('search');
+        $statut = $filtered->getFilter('statut');
+        $clientId = (int)($filtered->getFilter('client_id') ?? 0);
+
+        $limit = $pagination->getLimit();
+        $offset = $pagination->getOffset();
+
+        $where = ["1=1"];
+        $params = [];
+
+        if (!empty($search)) {
+            $where[] = "(d.ref ILIKE :search OR c.nom ILIKE :search OR c.prenom ILIKE :search OR c.telephone ILIKE :search OR v.numero_facture ILIKE :search)";
+            $params['search'] = "%$search%";
+        }
+
+        if (!empty($statut) && $statut !== "0" && $statut !== "ALL") {
+            if ($statut === 'SOLDEE') {
+                $where[] = "d.statut_dette_id = 2";
+            } elseif ($statut === 'NON_SOLDEE' || $statut === 'EN_COURS') {
+                $where[] = "d.statut_dette_id = 1";
+            }
+        }
+
+        if ($clientId > 0) {
+            $where[] = "d.client_id = :client_id";
+            $params['client_id'] = $clientId;
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        $sqlCount = "SELECT COUNT(DISTINCT d.id) AS total
+                     FROM dettes d
+                     JOIN clients c ON c.id = d.client_id
+                     JOIN ventes v ON v.id = d.vente_id
+                     WHERE $whereClause";
+
+        $countResult = Database::executeQuery($sqlCount, $params, true);
+        $totalElements = (int)($countResult->total ?? 0);
+        $pagination->setTotalElements($totalElements);
+
+        $sql = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance, d.vente_id, d.client_id, d.statut_dette_id,
+                       c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+                       sd.id AS statut_dette_id, sd.nom AS statut_nom,
+                       v.id AS vente_id, v.numero_facture, v.statut AS vente_statut, v.montant_total, v.montant_verse AS vente_montant_verse, v.date_vente, v.mode_paiement_id
+                FROM dettes d
+                JOIN clients c ON c.id = d.client_id
+                JOIN statuts_dette sd ON sd.id = d.statut_dette_id
+                JOIN ventes v ON v.id = d.vente_id
+                WHERE $whereClause
+                ORDER BY d.id DESC
+                LIMIT $limit OFFSET $offset";
+
+        $results = Database::executeQuery($sql, $params, false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $dette = Dette::toEntity($row);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dette->getId()));
+            $dette->setLignes(self::selectProduitsByDetteId((int)$dette->getId()));
+            return $dette;
+        }, $results) : [];
+    }
+
     public static function selectById(int $id): ?Dette
     {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT d.*, 
-                       c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
-                       sd.nom AS statut_nom,
-                       v.numero_facture, v.statut AS vente_statut
+        $sql = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance, d.vente_id, d.client_id, d.statut_dette_id,
+                       c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+                       sd.id AS statut_dette_id, sd.nom AS statut_nom,
+                       v.id AS vente_id, v.numero_facture, v.statut AS vente_statut, v.montant_total, v.montant_verse AS vente_montant_verse, v.date_vente, v.mode_paiement_id
                 FROM dettes d
                 JOIN clients c ON c.id = d.client_id
                 JOIN statuts_dette sd ON sd.id = d.statut_dette_id
                 JOIN ventes v ON v.id = d.vente_id
                 WHERE d.id = :id";
 
-        $dept = Database::executeQuery($pdo, $sql, ['id' => $id]);
-        if (!$dept) return null;
+        $row = Database::executeQuery($sql, ['id' => $id], true);
+        if (!$row) return null;
 
-        $dette = self::toObjet($dept);
+        $dette = Dette::toEntity($row);
         $dette->setPaiements(self::selectPaiementsByDetteId($id));
+        $dette->setLignes(self::selectProduitsByDetteId($id));
         return $dette;
     }
 
+    public static function selectByClientId(int $clientId): array
+    {
+        $sql = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance, d.vente_id, d.client_id, d.statut_dette_id,
+                       c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+                       sd.id AS statut_dette_id, sd.nom AS statut_nom,
+                       v.id AS vente_id, v.numero_facture, v.statut AS vente_statut, v.montant_total, v.montant_verse AS vente_montant_verse, v.date_vente, v.mode_paiement_id
+                FROM dettes d
+                JOIN clients c ON c.id = d.client_id
+                JOIN statuts_dette sd ON sd.id = d.statut_dette_id
+                JOIN ventes v ON v.id = d.vente_id
+                WHERE d.client_id = :client_id
+                ORDER BY d.id DESC";
+
+        $results = Database::executeQuery($sql, ['client_id' => $clientId], false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $dette = Dette::toEntity($row);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dette->getId()));
+            $dette->setLignes(self::selectProduitsByDetteId((int)$dette->getId()));
+            return $dette;
+        }, $results) : [];
+    }
 
     public static function selectAll(): array
     {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT d.*,
-                       c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
-                       sd.nom AS statut_nom,
-                       v.numero_facture, v.statut AS vente_statut
+        $sql = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance, d.vente_id, d.client_id, d.statut_dette_id,
+                       c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+                       sd.id AS statut_dette_id, sd.nom AS statut_nom,
+                       v.id AS vente_id, v.numero_facture, v.statut AS vente_statut, v.montant_total, v.montant_verse AS vente_montant_verse, v.date_vente, v.mode_paiement_id
                 FROM dettes d
                 JOIN clients c ON c.id = d.client_id
                 JOIN statuts_dette sd ON sd.id = d.statut_dette_id
                 JOIN ventes v ON v.id = d.vente_id
                 ORDER BY d.id DESC";
 
-        $tableauDettes = Database::query($pdo, $sql, false);
-        $dettes = [];
-        if (empty($tableauDettes)) return $dettes;
-
-        foreach ($tableauDettes as $dept) {
-            $dette = self::toObjet($dept);
-            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dept['id']));
-            $dettes[] = $dette;
-        }
-
-        return $dettes;
-    }
-
-    private static function selectPaiementsByDetteId(int $detteId): array
-    {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT p.*, mp.nom AS mode_nom
-                FROM paiements p
-                JOIN modes_paiement mp ON mp.id = p.mode_paiement_id
-                WHERE p.dette_id = :dette_id
-                ORDER BY p.id ASC";
-
-        $tableauPaiements = Database::executeQuery($pdo, $sql, ['dette_id' => $detteId], false);
-        $paiements = [];
-        if (empty($tableauPaiements)) return $paiements;
-
-        foreach ($tableauPaiements as $paiement) {
-            $p = new Paiement(
-                (int)$paiement['dette_id'],
-                (int)$paiement['mode_paiement_id'],
-                (float)$paiement['montant'],
-                isset($paiement['utilisateur_id']) ? (int)$paiement['utilisateur_id'] : null,
-                $paiement['notes'] ?? null,
-                (int)$paiement['id'],
-                $paiement['date_paiement']
-            );
-            $mode = new ModePaiement($paiement['mode_nom'], (int)$paiement['mode_paiement_id']);
-            $p->setModePaiement($mode);
-            $paiements[] = $p;
-        }
-
-        return $paiements;
-    }
-
-    public static function selectProduitsByDetteId(int $detteId): array
-    {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT p.*,lv.quantite as quantity,lv.prix_unitaire,(lv.quantite*lv.prix_unitaire) AS sous_total
-                    FROM dettes d
-                    INNER JOIN ventes v ON v.id=d.vente_id
-                    INNER JOIN lignes_vente lv ON lv.vente_id=v.id
-                    INNER JOIN produits p ON p.id=lv.produit_id
-                WHERE d.id=:dette_id";
-
-        $tableauProduits = Database::executeQuery($pdo, $sql, ['dette_id' => $detteId], false);
-        $produits = [];
-        if (empty($tableauProduits)) return $produits;
-
-        foreach ($tableauProduits as $prod) {
-            $p = new Produit(
-                $prod['code'],
-                $prod['libelle'],
-                $prod['categorie'],
-                $prod['prix_vente'],
-                $prod['sous_total'],
-                $prod['quantity'],
-                $prod['seuil_alerte'],
-                null,
-                $prod["id"]
-            );
-            $produits[] = $p;
-        }
-        return $produits;
+        $results = Database::query($sql, false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $dette = Dette::toEntity($row);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dette->getId()));
+            $dette->setLignes(self::selectProduitsByDetteId((int)$dette->getId()));
+            return $dette;
+        }, $results) : [];
     }
 
     public static function selectActiveDettes(): array
     {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT d.*, p.libelle,
-                    c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
-                       sd.nom AS statut_nom,
-                       v.numero_facture, v.statut AS vente_statut
+        $sql = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance, d.vente_id, d.client_id, d.statut_dette_id,
+                       c.id AS client_id, c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
+                       sd.id AS statut_dette_id, sd.nom AS statut_nom,
+                       v.id AS vente_id, v.numero_facture, v.statut AS vente_statut, v.montant_total, v.montant_verse AS vente_montant_verse, v.date_vente, v.mode_paiement_id
                 FROM dettes d
-                INNER JOIN clients c ON c.id = d.client_id
-                INNER JOIN statuts_dette sd ON sd.id = d.statut_dette_id
-                INNER JOIN ventes v ON v.id = d.vente_id
-                INNER JOIN lignes_vente lv ON lv.vente_id = v.id
-                INNER JOIN produits p ON lv.produit_id = p.id
+                JOIN clients c ON c.id = d.client_id
+                JOIN statuts_dette sd ON sd.id = d.statut_dette_id
+                JOIN ventes v ON v.id = d.vente_id
                 WHERE d.montant_restant > 0
-                ORDER BY d.id DESc";
+                ORDER BY d.id DESC";
 
-        $tableauDettesActives = Database::query($pdo, $sql, false);
-        $dettes = [];
-        if (empty($tableauDettesActives)) return $dettes;
-
-        foreach ($tableauDettesActives as $deptActive) {
-            $dette = self::toObjet($deptActive);
-            $dette->setPaiements(self::selectPaiementsByDetteId((int)$deptActive['id']));
-            $dettes[] = $dette;
-        }
-
-        return $dettes;
+        $results = Database::query($sql, false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $dette = Dette::toEntity($row);
+            $dette->setPaiements(self::selectPaiementsByDetteId((int)$dette->getId()));
+            $dette->setLignes(self::selectProduitsByDetteId((int)$dette->getId()));
+            return $dette;
+        }, $results) : [];
     }
 
-    public static function selectStatistiques(): array
+    public static function insert(Dette $dette): int
     {
-        $pdo = Database::connexionDB();
+        $sql = "INSERT INTO dettes (ref, montant_initial, montant_verse, montant_restant, date_dette, date_echeance, vente_id, client_id, statut_dette_id)
+                VALUES (:ref, :montant_initial, :montant_verse, :montant_restant, :date_dette, :date_echeance, :vente_id, :client_id, :statut_dette_id) RETURNING id";
 
-        $sql = "SELECT 
-                    COALESCE(SUM(montant_restant), 0) AS somme_Montant_Restant_Dettes,
-                    COUNT(DISTINCT client_id) AS nbr_Clients_Dettes,
-                    COALESCE(SUM(montant_verse), 0) AS somme_Montant_Verser_Dettes
-                FROM dettes
-                WHERE montant_restant > 0";
+        $res = Database::executeQuery($sql, [
+            'ref' => $dette->getRef(),
+            'montant_initial' => $dette->getMontantInitial(),
+            'montant_verse' => $dette->getMontantVerse(),
+            'montant_restant' => $dette->getMontantRestant(),
+            'date_dette' => $dette->getDateDette() ?? date('Y-m-d'),
+            'date_echeance' => $dette->getDateEcheance(),
+            'vente_id' => $dette->getVenteId(),
+            'client_id' => $dette->getClientId(),
+            'statut_dette_id' => $dette->getStatutDetteId()
+        ], true);
 
-        return Database::query($pdo, $sql);
+        $id = (int)($res->id ?? 0);
+        $dette->setId($id);
+        return $id;
     }
 
-    private function toObjet(array $data): Dette
+    public static function selectPaiementsByDetteId(int $detteId): array
     {
-        $dette = new Dette(
-            $data['ref'],
-            (int) $data['vente_id'],
-            (int) $data['client_id'],
-            (int) $data['statut_dette_id'],
-            (float) $data['montant_initial'],
-            (float) ($data['montant_verse'] ?? 0),
-            (float) ($data['montant_restant'] ?? 0),
-            $data['date_echeance'] ?? null,
-            (int) $data['id'],
-            $data['date_dette'] ?? null
-        );
+        $sql = "SELECT p.id AS paiement_id, p.id, p.montant, p.notes, p.date_paiement, p.dette_id, p.mode_paiement_id, p.utilisateur_id,
+                       mp.id AS mode_id, mp.nom AS mode_nom, mp.nom AS mode_paiement_nom
+                FROM paiements p
+                LEFT JOIN modes_paiement mp ON mp.id = p.mode_paiement_id
+                WHERE p.dette_id = :dette_id
+                ORDER BY p.id ASC";
 
-        if (isset($data['client_nom'])) {
-            $client = new Client(
-                $data['client_nom'],
-                $data['client_prenom'] ?? '',
-                $data['client_telephone'] ?? '',
-                $data['client_email'] ?? null,
-                (float) ($data['client_limite'] ?? 0),
-                (int) $data['client_id']
-            );
-            $dette->setClient($client);
-        }
+        $results = Database::executeQuery($sql, ['dette_id' => $detteId], false);
+        return (!empty($results) && is_array($results)) ? array_map(fn($row) => Paiement::toEntity($row), $results) : [];
+    }
 
-        if (isset($data['statut_nom'])) {
-            $statut = new StatutDette($data['statut_nom'], (int) $data['statut_dette_id']);
-            $dette->setStatutDette($statut);
-        }
+    public static function selectProduitsByDetteId(int $detteId): array
+    {
+        $sql = "SELECT p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte,
+                       lv.quantite, lv.prix_unitaire, (lv.quantite * lv.prix_unitaire) AS sous_total, lv.id AS ligne_id, lv.vente_id
+                FROM dettes d
+                JOIN ventes v ON v.id = d.vente_id
+                JOIN lignes_vente lv ON lv.vente_id = v.id
+                JOIN produits p ON p.id = lv.produit_id
+                WHERE d.id = :dette_id
+                ORDER BY lv.id ASC";
 
-        if (isset($data['numero_facture'])) {
-            $vente = new Vente(
-                $data['numero_facture'],
-                (float) $data['montant_initial'],
-                (float) ($data['montant_verse'] ?? 0),
-                $data['vente_statut'] ?? 'AVANCE',
-                $data['date_echeance'] ?? null,
-                (int) $data['client_id'],
-                null,
-                (int) $data['vente_id'],
-                $data['date_dette'] ?? null
-            );
-            $dette->setVente($vente);
-        }
+        $results = Database::executeQuery($sql, ['dette_id' => $detteId], false);
+        return (!empty($results) && is_array($results)) ? array_map(fn($row) => LigneVente::toEntity($row), $results) : [];
+    }
 
-        return $dette;
+    public static function selectStatistiques(): object
+    {
+        $sql = "SELECT COUNT(*) AS nbr_dettes,
+                       COALESCE(SUM(montant_initial), 0) AS total_initial,
+                       COALESCE(SUM(montant_verse), 0) AS total_verse,
+                       COALESCE(SUM(montant_restant), 0) AS total_restant
+                FROM dettes";
+        $res = Database::query($sql, true);
+        return $res ?: (object)['nbr_dettes' => 0, 'total_initial' => 0, 'total_verse' => 0, 'total_restant' => 0];
     }
 }

@@ -1,6 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Produit.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class LigneVente
 {
@@ -8,9 +10,14 @@ class LigneVente
     private int $venteId;
     private int $quantite;
     private float $prixUnitaire;
-    private Produit $produit ;
+    private Produit $produit;
 
-    public function __construct(Produit $produit, int $quantite, float $prixUnitaire, int $venteId, ?int $id = null
+    public function __construct(
+        Produit $produit,
+        int $quantite,
+        float $prixUnitaire,
+        int $venteId = 0,
+        ?int $id = null
     ) {
         $this->id = $id;
         $this->venteId = $venteId;
@@ -36,12 +43,12 @@ class LigneVente
 
     public function setVenteId(?int $venteId): void
     {
-        $this->venteId = $venteId;
+        $this->venteId = $venteId ?? 0;
     }
 
     public function getProduitId(): int
     {
-        return $this->produit->getId();
+        return $this->produit->getId() ?? 0;
     }
 
     public function getProduit(): Produit
@@ -77,5 +84,23 @@ class LigneVente
     public function getSousTotal(): float
     {
         return $this->quantite * $this->prixUnitaire;
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->ligne_id ?? $obj->ligne_vente_id ?? $obj->id ?? null;
+        $venteId = $obj->vente_id ?? 0;
+        $quantite = $obj->quantite ?? 1;
+        $prixUnitaire = $obj->prix_unitaire ?? 0;
+
+        $produit = Produit::toEntity($obj);
+
+        return new self(
+            produit: $produit,
+            quantite: (int)$quantite,
+            prixUnitaire: (float)$prixUnitaire,
+            venteId: (int)$venteId,
+            id: $id !== null ? (int)$id : null
+        );
     }
 }

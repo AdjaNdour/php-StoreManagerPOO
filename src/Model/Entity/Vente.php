@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Client.php';
-require_once __DIR__ . '/Utilisateur.php';
-require_once __DIR__ . '/LigneVente.php';
+namespace App\Model\Entity;
+
+use stdClass;
 
 class Vente
 {
@@ -13,18 +13,23 @@ class Vente
     private string $statut;
     private ?string $dateVente;
     private ?string $dateEcheance;
-
     private ?int $modePaiementId;
-
-    private Client $client ;
-
+    private ?ModePaiement $modePaiement = null;
+    private Client $client;
     private ?Utilisateur $utilisateur = null;
-
     private array $lignes = [];
 
-    public function __construct( Client $client , string $numeroFacture, float $montantTotal = 0.0, float $montantVerse = 0.0, string $statut = 'PAYEE', 
-                                ?string $dateEcheance = null, ?Utilisateur $utilisateur = null, 
-                                ?int $id = null, ?string $dateVente = null, ?int $modePaiementId= null
+    public function __construct(
+        Client $client,
+        string $numeroFacture,
+        float $montantTotal = 0.0,
+        float $montantVerse = 0.0,
+        string $statut = 'PAYEE',
+        ?string $dateEcheance = null,
+        ?Utilisateur $utilisateur = null,
+        ?int $id = null,
+        ?string $dateVente = null,
+        ?int $modePaiementId = null
     ) {
         $this->id = $id;
         $this->numeroFacture = $numeroFacture;
@@ -78,6 +83,11 @@ class Vente
         $this->montantVerse = max(0.0, $montantVerse);
     }
 
+    public function getMontantRestant(): float
+    {
+        return max(0.0, $this->montantTotal - $this->montantVerse);
+    }
+
     public function getStatut(): string
     {
         return $this->statut;
@@ -110,7 +120,7 @@ class Vente
 
     public function getClientId(): int
     {
-        return $this->client->getId();
+        return $this->client->getId() ?? 0;
     }
 
     public function getClient(): Client
@@ -125,7 +135,7 @@ class Vente
 
     public function getUtilisateurId(): ?int
     {
-        return $this->utilisateur->getId();
+        return $this->utilisateur?->getId();
     }
 
     public function getUtilisateur(): ?Utilisateur
@@ -148,6 +158,16 @@ class Vente
         return $this->modePaiementId;
     }
 
+    public function getModePaiement(): ?ModePaiement
+    {
+        return $this->modePaiement;
+    }
+
+    public function setModePaiement(?ModePaiement $modePaiement): void
+    {
+        $this->modePaiement = $modePaiement;
+    }
+
     public function getLignes(): array
     {
         return $this->lignes;
@@ -161,5 +181,42 @@ class Vente
     public function ajouterLigne(LigneVente $ligne): void
     {
         $this->lignes[] = $ligne;
+    }
+
+    public static function toEntity(stdClass $obj): self
+    {
+        $id = $obj->vente_id ?? $obj->id ?? null;
+        $numFacture = $obj->numero_facture ?? '';
+        $total = $obj->montant_total ?? 0;
+        $verse = $obj->montant_verse ?? 0;
+        $statut = $obj->statut ?? 'PAYEE';
+        $dateVente = $obj->date_vente ?? null;
+        $dateEcheance = $obj->date_echeance ?? null;
+        $modeId = $obj->mode_paiement_id ?? null;
+
+        $client = Client::toEntity($obj);
+
+        $hasUser = isset($obj->nom_utilisateur) || isset($obj->utilisateur_id);
+        $utilisateur = $hasUser ? Utilisateur::toEntity($obj) : null;
+
+        $vente = new self(
+            client: $client,
+            numeroFacture: (string)$numFacture,
+            montantTotal: (float)$total,
+            montantVerse: (float)$verse,
+            statut: (string)$statut,
+            dateEcheance: $dateEcheance ? (string)$dateEcheance : null,
+            utilisateur: $utilisateur,
+            id: $id !== null ? (int)$id : null,
+            dateVente: $dateVente ? (string)$dateVente : null,
+            modePaiementId: $modeId !== null ? (int)$modeId : null
+        );
+
+        $hasMode = isset($obj->mode_paiement_nom) || isset($obj->mode_nom);
+        if ($hasMode) {
+            $vente->setModePaiement(ModePaiement::toEntity($obj));
+        }
+
+        return $vente;
     }
 }

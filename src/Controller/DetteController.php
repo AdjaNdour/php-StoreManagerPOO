@@ -1,66 +1,89 @@
 <?php
 
-require_once PATHBASE . "/src/Core/Controller.php";
-require_once PATHBASE . "/src/Service/DeptService.php";
-require_once PATHBASE . "/src/Service/ModePaiementService.php";
+namespace App\Controller;
 
-class DetteController extends Controller
+use App\Core\Controller;
+use App\Core\SessionManager;
+use App\Core\Request;
+use App\Core\Validator;
+use App\Service\DetteService;
+use App\Service\ClientService;
+use App\Service\ModePaiementService;
+use App\Model\DTO\FilteredModel;
+use App\Model\DTO\PaginationModel;
+use App\Model\Entity\Utilisateur;
+use Exception;
+
+class DetteController
 {
-
     public static function getAllDettes(): void
     {
+        $page = (int)Request::get('page', 1);
+        $search = (string)Request::get('search', '');
+        $statut = (string)Request::get('statut', 'ALL');
+        $clientId = (int)Request::get('client_id', 0);
 
-        $allDettes = DebtService::getActiveDebts();
-        $modes = ModePaiementService::getAll();
+        $filtered = new FilteredModel([
+            'search' => $search,
+            'statut' => $statut,
+            'client_id' => $clientId
+        ]);
 
-        $stats = DebtService::getStatistiques();
-        $clientsDebiteurs = (int)$stats['nbr_clients_dettes'];
-        $creancesActives = (float)$stats['somme_montant_restant_dettes'];
-        $totalRecouvrements = (float)$stats['somme_montant_verser_dettes'];
-        $produitsParDette = [];
-        foreach ($allDettes as $dette) {
-            $produitsParDette[$dette->getId()] = DebtService::getAllProduitsDette($dette->getId());
-        }
-                // Debug::dd($produitsParDette);
+        $pagination = new PaginationModel(page: $page, limit: 4);
 
-        self::renderViewLayout('dettes', 'base', [
-            'allDettes' => $allDettes,
-            'stats' => $stats,
-            'modes' => $modes,
-            'clientsDebiteurs' => $clientsDebiteurs,
-            'creancesActives' => $creancesActives,
-            'totalRecouvrements' => $totalRecouvrements,
-            'produitsParDette' => $produitsParDette
+        $dettes = DetteService::getAllDettesFiltered($filtered, $pagination);
+        $clients = ClientService::getAll();
+        $modesPaiement = ModePaiementService::getAll();
+        $statistiques = DetteService::getStatistiques();
+
+        Controller::renderViewLayout("dettes", "base", [
+            'dettes' => $dettes,
+            'allDettes' => $dettes,
+            'clients' => $clients,
+            'modesPaiement' => $modesPaiement,
+            'modes' => $modesPaiement,
+            'statistiques' => $statistiques,
+            'stats' => $statistiques,
+            'pagination' => $pagination,
+            'filtered' => $filtered,
+            'filteredTableau' => $filtered,
+            'currentPage' => 'dettes'
         ]);
     }
 
     public static function enregistrerRemboursementDette(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (Request::isPost()) {
+            $detteId = (int)Request::post('dette_id', 0);
+            $montant = (float)(Request::post('montant_verse') ?? Request::post('montant') ?? 0);
+            $modePaiementId = (int)(Request::post('mode_paiement') ?? Request::post('mode_paiement_id') ?? Request::post('mode_reglement') ?? 1);
+            $notes = (string)Request::post('notes', '');
 
-            $detteId = (int)($_REQUEST['dette_id'] ?? 0);
-            $montant = (float)($_REQUEST['montant_verse'] ?? 0);
-            $modeId = $_REQUEST['mode_paiement'] ?? 0;
+            if ($modePaiementId <= 0) {
+                $modePaiementId = 1;
+            }
 
-            if ($detteId > 0 && $montant > 0) {
-                DebtService::enregistrerPaiement($detteId, $montant, $modeId);
+            $errors = [];
+            Validator::isGreaterThanZero($detteId, 'dette_id', $errors, "Identifiant dette manquant.");
+            Validator::isGreaterThanZero($montant, 'montant', $errors, "Le montant doit être supérieur à zéro.");
+
+            if (!Validator::hasErrors($errors)) {
+                try {
+                    $user = SessionManager::getData(KEY_USERCONNECT);
+                    $userId = ($user instanceof Utilisateur) ? $user->getId() : 1;
+
+                    DetteService::rembourserDette($detteId, $montant, $modePaiementId, $userId, $notes);
+                } catch (Exception $e) {
+                    // Handled
+                }
             }
         }
 
-        self::redirectToRoute('dettes');
+        Controller::redirectToRoute("dettes");
     }
 
-    public static function listerProduitsDette(): void
+    public static function enregistrerPaiement(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-            $detteId = (int)($_REQUEST['dette_id'] ?? 0);
-
-            if ($detteId > 0) {
-                DebtService::getAllProduitsDette($detteId);
-            }
-        }
-
-        self::redirectToRoute('dettes');
+        self::enregistrerRemboursementDette();
     }
 }

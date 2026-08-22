@@ -1,40 +1,99 @@
 <?php
 
-require_once dirname(__DIR__) . "/Entity/Approvisionnement.php";
-require_once dirname(__DIR__) . "/Entity/LigneApprovisionnement.php";
-require_once dirname(__DIR__) . "/Entity/Fournisseur.php";
-require_once dirname(__DIR__) . "/Entity/Produit.php";
+namespace App\Model\Repository;
+
+use App\Core\Database;
+use App\Model\Entity\Approvisionnement;
+use App\Model\Entity\LigneApprovisionnement;
+use App\Model\Entity\Fournisseur;
+use App\Model\Entity\Produit;
+use App\Model\DTO\FilteredModel;
+use App\Model\DTO\PaginationModel;
+use Exception;
+use Throwable;
 
 class ApprovisionnementRepository
 {
+    public static function selectAllFiltered(FilteredModel $filtered, PaginationModel $pagination): array
+    {
+        $search = $filtered->getFilter('search');
+        $statut = $filtered->getFilter('statut');
+        $limit = $pagination->getLimit();
+        $offset = $pagination->getOffset();
+
+        $where = ["1=1"];
+        $params = [];
+
+        if (!empty($search)) {
+            $where[] = "(a.reference_bl ILIKE :search OR f.nom ILIKE :search OR f.telephone ILIKE :search)";
+            $params['search'] = "%$search%";
+        }
+
+        if (!empty($statut) && $statut !== "0" && $statut !== "ALL") {
+            if ($statut === 'RECU') {
+                $where[] = "a.date_reception IS NOT NULL";
+            } elseif ($statut === 'EN_ATTENTE') {
+                $where[] = "a.date_reception IS NULL";
+            }
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        $sqlCount = "SELECT COUNT(DISTINCT a.id) AS total
+                     FROM approvisionnements a
+                     JOIN fournisseurs f ON f.id = a.fournisseur_id
+                     WHERE $whereClause";
+
+        $countRes = Database::executeQuery($sqlCount, $params, true);
+        $total = (int)($countRes->total ?? 0);
+        $pagination->setTotalElements($total);
+
+        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
+                FROM approvisionnements a
+                JOIN fournisseurs f ON f.id = a.fournisseur_id
+                WHERE $whereClause
+                ORDER BY a.id DESC
+                LIMIT $limit OFFSET $offset";
+
+        $results = Database::executeQuery($sql, $params, false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $appro = Approvisionnement::toEntity($row);
+            $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
+            return $appro;
+        }, $results) : [];
+    }
 
     public static function insert(Approvisionnement $appro): int
     {
-        $pdo = Database::connexionDB();
+        $pdo = Database::getInstance();
+        $startedTx = false;
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTx = true;
+        }
 
         try {
-            $pdo->beginTransaction();
-
             $sqlAppro = "INSERT INTO approvisionnements (reference_bl, cout_achat, date_appro, date_reception, fournisseur_id, utilisateur_id)
-                         VALUES (:reference_bl, :cout_achat, :date_appro, :date_reception, :fournisseur_id, :utilisateur_id)";
+                         VALUES (:reference_bl, :cout_achat, :date_appro, :date_reception, :fournisseur_id, :utilisateur_id) RETURNING id";
 
-            Database::executeUpdate($pdo, $sqlAppro, [
+            $res = Database::executeQuery($sqlAppro, [
                 'reference_bl' => $appro->getReferenceBl(),
                 'cout_achat' => $appro->getCoutAchat(),
                 'date_appro' => $appro->getDateAppro() ?? date('Y-m-d'),
                 'date_reception' => $appro->getDateReception(),
                 'fournisseur_id' => $appro->getFournisseurId(),
-                'utilisateur_id' => $appro->getUtilisateurId()
-            ]);
+                'utilisateur_id' => $appro->getUtilisateur()?->getId() ?? 3
+            ], true);
 
-            $approId = (int)$pdo->lastInsertId();
+            $approId = (int)($res->id ?? 0);
             $appro->setId($approId);
 
             $sqlLigne = "INSERT INTO lignes_approvisionnement (approvisionnement_id, produit_id, quantite_appro, quantite_recue, prix_achat, sous_total)
                          VALUES (:approvisionnement_id, :produit_id, :quantite_appro, :quantite_recue, :prix_achat, :sous_total)";
 
             foreach ($appro->getLignes() as $ligne) {
-                Database::executeUpdate($pdo, $sqlLigne, [
+                Database::executeUpdate($sqlLigne, [
                     'approvisionnement_id' => $approId,
                     'produit_id' => $ligne->getProduitId(),
                     'quantite_appro' => $ligne->getQuantiteAppro(),
@@ -42,12 +101,74 @@ class ApprovisionnementRepository
                     'prix_achat' => $ligne->getPrixAchat(),
                     'sous_total' => $ligne->getSousTotal()
                 ]);
+
+                // If date_reception was already set upon insert, increment stock immediately
+                if (!empty($appro->getDateReception()) && $ligne->getQuantiteRecue() > 0) {
+                    Database::executeUpdate("UPDATE produits SET stock_initial = stock_initial + :qty WHERE id = :id", [
+                        'qty' => $ligne->getQuantiteRecue(),
+                        'id' => $ligne->getProduitId()
+                    ]);
+                }
             }
 
-            $pdo->commit();
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
             return $approId;
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
+        } catch (Throwable $e) {
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public static function receptionnerBL(int $approId, array $quantitesRecues = []): bool
+    {
+        $pdo = Database::getInstance();
+        $startedTx = false;
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTx = true;
+        }
+
+        try {
+            $sqlAppro = "SELECT * FROM approvisionnements WHERE id = :id FOR UPDATE";
+            $approRow = Database::executeQuery($sqlAppro, ['id' => $approId], true);
+            if (!$approRow) {
+                throw new Exception("Approvisionnement introuvable.");
+            }
+
+            $lignes = self::selectLignesByApproId($approId);
+
+            foreach ($lignes as $ligne) {
+                $ligneId = $ligne->getId();
+                $qteRecue = isset($quantitesRecues[$ligneId]) ? (int)$quantitesRecues[$ligneId] : $ligne->getQuantiteAppro();
+                if ($qteRecue < 0) $qteRecue = 0;
+
+                Database::executeUpdate("UPDATE lignes_approvisionnement SET quantite_recue = :qte WHERE id = :id", [
+                    'qte' => $qteRecue,
+                    'id' => $ligneId
+                ]);
+
+                if ($qteRecue > 0) {
+                    Database::executeUpdate("UPDATE produits SET stock_initial = stock_initial + :qte WHERE id = :id", [
+                        'qte' => $qteRecue,
+                        'id' => $ligne->getProduitId()
+                    ]);
+                }
+            }
+
+            Database::executeUpdate("UPDATE approvisionnements SET date_reception = CURRENT_DATE WHERE id = :id", [
+                'id' => $approId
+            ]);
+
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            return true;
+        } catch (Throwable $e) {
+            if ($startedTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
@@ -56,235 +177,72 @@ class ApprovisionnementRepository
 
     public static function selectAll(): array
     {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT a.*, 
-                       f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
+        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
                 FROM approvisionnements a
                 JOIN fournisseurs f ON f.id = a.fournisseur_id
                 ORDER BY a.id DESC";
 
-        $tableauAppros = Database::query($pdo, $sql, false);
-        $appros = [];
-        if (empty($tableauAppros)) return $appros;
-
-        foreach ($tableauAppros as $approv) {
-            $appro = self::toObjet($approv);
-            $appro->setLignes(self::selectLignesByApproId((int)$approv['id']));
-            $appros[] = $appro;
-        }
-
-        return $appros;
+        $results = Database::query($sql, false);
+        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
+            $appro = Approvisionnement::toEntity($row);
+            $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
+            return $appro;
+        }, $results) : [];
     }
 
     public static function selectById(int $id): ?Approvisionnement
     {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT a.*, 
-                       f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
+        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
                 FROM approvisionnements a
                 JOIN fournisseurs f ON f.id = a.fournisseur_id
                 WHERE a.id = :id";
 
-        $tableauAppro = Database::executeQuery($pdo, $sql, ['id' => $id]);
-        if (!$tableauAppro) return null;
+        $row = Database::executeQuery($sql, ['id' => $id], true);
+        if (!$row) return null;
 
-        $appro = self::toObjet($tableauAppro);
+        $appro = Approvisionnement::toEntity($row);
         $appro->setLignes(self::selectLignesByApproId($id));
         return $appro;
     }
 
-    private static function selectLignesByApproId(int $approId): array
+    public static function selectByReferenceBl(string $referenceBl): ?Approvisionnement
     {
-        $pdo = Database::connexionDB();
+        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
+                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
+                FROM approvisionnements a
+                JOIN fournisseurs f ON f.id = a.fournisseur_id
+                WHERE a.reference_bl = :reference_bl LIMIT 1";
 
-        $sql = "SELECT la.*, p.libelle AS produit_libelle, p.code AS produit_code
+        $row = Database::executeQuery($sql, ['reference_bl' => $referenceBl], true);
+        if (!$row) return null;
+
+        $appro = Approvisionnement::toEntity($row);
+        $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
+        return $appro;
+    }
+
+    public static function selectLignesByApproId(int $approId): array
+    {
+        $sql = "SELECT la.id AS ligne_appro_id, la.id, la.approvisionnement_id, la.quantite_appro, la.quantite_recue, la.prix_achat, la.sous_total,
+                       p.id AS produit_id, p.id, p.code AS produit_code, p.code, p.libelle AS produit_libelle, p.libelle, p.categorie AS produit_categorie, p.categorie, p.prix_vente, p.cout_achat, p.stock_initial, p.seuil_alerte
                 FROM lignes_approvisionnement la
                 JOIN produits p ON p.id = la.produit_id
                 WHERE la.approvisionnement_id = :approvisionnement_id
                 ORDER BY la.id ASC";
 
-        $rows = Database::executeQuery($pdo, $sql, ['approvisionnement_id' => $approId], false);
-        $lignes = [];
-        if (empty($rows)) return $lignes;
-
-        foreach ($rows as $row) {
-            $la = new LigneApprovisionnement(
-                (int)$row['produit_id'],
-                (int)$row['quantite_appro'],
-                (float)$row['prix_achat'],
-                (int)$row['quantite_recue'],
-                (float)$row['sous_total'],
-                (int)$row['approvisionnement_id'],
-                (int)$row['id']
-            );
-            $produit = new Produit(
-                $row['produit_code'],
-                $row['produit_libelle'],
-                '',
-                (float)$row['prix_achat'],
-                (float)$row['prix_achat'],
-                0,
-                5,
-                null,
-                (int)$row['produit_id']
-            );
-            $la->setProduit($produit);
-            $lignes[] = $la;
-        }
-
-        return $lignes;
+        $rows = Database::executeQuery($sql, ['approvisionnement_id' => $approId], false);
+        return (!empty($rows) && is_array($rows)) ? array_map(fn($row) => LigneApprovisionnement::toEntity($row), $rows) : [];
     }
 
-    public static function receptionnerBL(int $approvisionnementId, array $quantitesRecues): bool
+    public static function selectStatistiques(): object
     {
-        $pdo = Database::connexionDB();
-
-        try {
-            $pdo->beginTransaction();
-
-            $sqlAppro = "SELECT * FROM approvisionnements WHERE id = :id FOR UPDATE";
-            $appro = Database::executeQuery($pdo, $sqlAppro, ['id' => $approvisionnementId]);
-
-            if (!$appro) {
-                throw new Exception("Bordereau de livraison introuvable.");
-            }
-
-            // 1. Update date_reception on approvisionnement
-            $sqlUpdateAppro = "UPDATE approvisionnements SET date_reception = CURRENT_DATE WHERE id = :id";
-            Database::executeUpdate($pdo, $sqlUpdateAppro, ['id' => $approvisionnementId]);
-
-            // 2. Update each ligne and increment stock_initial on produits
-            $sqlSelectLignes = "SELECT * FROM lignes_approvisionnement WHERE approvisionnement_id = :appro_id";
-            $lignes = Database::executeQuery($pdo, $sqlSelectLignes, ['appro_id' => $approvisionnementId], false);
-
-            $sqlUpdateLigne = "UPDATE lignes_approvisionnement SET quantite_recue = :quantite_recue WHERE id = :id";
-            $sqlUpdateStock = "UPDATE produits SET stock_initial = stock_initial + :quantite WHERE id = :id";
-
-            foreach ($lignes as $ligne) {
-                $produitId = (int)$ligne['produit_id'];
-                $qteRecue = isset($quantitesRecues[$produitId]) ? (int)$quantitesRecues[$produitId] : (int)$ligne['quantite_appro'];
-
-                Database::executeUpdate($pdo, $sqlUpdateLigne, [
-                    'quantite_recue' => $qteRecue,
-                    'id' => $ligne['id']
-                ]);
-
-                Database::executeUpdate($pdo, $sqlUpdateStock, [
-                    'quantite' => $qteRecue,
-                    'id' => $produitId
-                ]);
-            }
-
-            $pdo->commit();
-            return true;
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            throw $e;
-        }
-    }
-
-    public static function selectStatistiques(): array
-    {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT 
-                    COALESCE(SUM(cout_achat), 0) AS cout_total_entrees,
-                    COUNT(CASE WHEN date_reception IS NOT NULL THEN 1 END) AS bl_recus,
-                    COUNT(DISTINCT fournisseur_id) AS fournisseurs_actifs
+        $sql = "SELECT COUNT(*) AS total_bl,
+                       COALESCE(SUM(cout_achat), 0) AS total_cout_appro,
+                       COUNT(DISTINCT fournisseur_id) AS total_fournisseurs_actifs
                 FROM approvisionnements";
-
-        $res = Database::query($pdo, $sql);
-        return [
-            'cout_total_entrees' => (float)($res['cout_total_entrees'] ?? 0),
-            'bl_recus' => (int)($res['bl_recus'] ?? 0),
-            'fournisseurs_actifs' => (int)($res['fournisseurs_actifs'] ?? 0)
-        ];
-    }
-
-    public static function selectFournisseursSolde(): array
-    {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT f.id, f.nom, f.telephone, f.email, f.adresse,
-                       COALESCE(SUM(a.cout_achat), 0) AS total_du,
-                       COUNT(a.id) AS nbr_factures
-                FROM fournisseurs f
-                LEFT JOIN approvisionnements a ON a.fournisseur_id = f.id
-                GROUP BY f.id, f.nom, f.telephone, f.email, f.adresse
-                ORDER BY total_du DESC";
-
-        $rows = Database::query($pdo, $sql, false);
-        $result = [];
-        if (empty($rows)) return $result;
-
-        foreach ($rows as $r) {
-            $fournisseurId = (int)$r['id'];
-            $factures = self::selectByFournisseurId($fournisseurId);
-            $result[] = [
-                'fournisseur_id' => $fournisseurId,
-                'nom' => $r['nom'],
-                'telephone' => $r['telephone'],
-                'email' => $r['email'],
-                'adresse' => $r['adresse'],
-                'total_du' => (float)$r['total_du'],
-                'nbr_factures' => (int)$r['nbr_factures'],
-                'factures' => $factures
-            ];
-        }
-
-        return $result;
-    }
-
-    public static function selectByFournisseurId(int $fournisseurId): array
-    {
-        $pdo = Database::connexionDB();
-
-        $sql = "SELECT a.*, f.nom AS fournisseur_nom, f.telephone AS fournisseur_telephone
-                FROM approvisionnements a
-                JOIN fournisseurs f ON f.id = a.fournisseur_id
-                WHERE a.fournisseur_id = :fournisseur_id
-                ORDER BY a.id DESC";
-
-        $rows = Database::executeQuery($pdo, $sql, ['fournisseur_id' => $fournisseurId], false);
-        $appros = [];
-        if (empty($rows)) return $appros;
-
-        foreach ($rows as $row) {
-            $appro = self::toObjet($row);
-            $appro->setLignes(self::selectLignesByApproId((int)$row['id']));
-            $appros[] = $appro;
-        }
-
-        return $appros;
-    }
-
-    private function toObjet(array $data): Approvisionnement
-    {
-        $appro = new Approvisionnement(
-            $data['reference_bl'],
-            (int) $data['fournisseur_id'],
-            (float) $data['cout_achat'],
-            $data['date_reception'] ?? null,
-            isset($data['utilisateur_id']) ? (int) $data['utilisateur_id'] : null,
-            (int) $data['id'],
-            $data['date_appro'] ?? null
-        );
-
-        if (isset($data['fournisseur_nom'])) {
-            $fournisseur = new Fournisseur(
-                $data['fournisseur_nom'],
-                $data['fournisseur_telephone'] ?? '',
-                $data['fournisseur_email'] ?? null,
-                $data['fournisseur_adresse'] ?? null,
-                (int) $data['fournisseur_id']
-            );
-            $appro->setFournisseur($fournisseur);
-        }
-
-        return $appro;
+        $res = Database::query($sql, true);
+        return $res ?: (object)['total_bl' => 0, 'total_cout_appro' => 0, 'total_fournisseurs_actifs' => 0];
     }
 }
