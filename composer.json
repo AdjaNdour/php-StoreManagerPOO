@@ -12,5 +12,7 @@
             "email": "adjacourandour4@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "adja/core": "^1.0"
+    }
 }

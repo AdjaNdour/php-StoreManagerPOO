@@ -1,0 +1,59 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "7df8f96b70a43930e556d142dc7763b8",
+    "packages": [
+        {
+            "name": "adja/core",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/AdjaNdour/php-my-core.git",
+                "reference": "e05637d6597cf1c75b021654e265ae98b90db1bd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/AdjaNdour/php-my-core/zipball/e05637d6597cf1c75b021654e265ae98b90db1bd",
+                "reference": "e05637d6597cf1c75b021654e265ae98b90db1bd",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Adja\\Core\\": "src/Core/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "AdjaNdour",
+                    "email": "adjacourandour4@gmail.com"
+                }
+            ],
+            "description": "Core PHP réutilisable pour mes applications MVC",
+            "support": {
+                "issues": "https://github.com/AdjaNdour/php-my-core/issues",
+                "source": "https://github.com/AdjaNdour/php-my-core/tree/v1.0.0"
+            },
+            "time": "2026-08-25T15:48:42+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

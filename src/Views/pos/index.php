@@ -1,20 +1,28 @@
 <?php
-use App\Core\Helpers;
+use Adja\Core\Helpers;
 use App\Model\DTO\FilteredModel;
 use App\Model\DTO\PaginationModel;
 
-$allVentes = $viewData['allVentes'] ?? $viewData['ventes'] ?? [];
-$stats = $viewData['stats'] ?? $viewData['statistiques'] ?? null;
-$nbrVentes = $stats->nbr_ventes ?? ($viewData['nbrVentes'] ?? count($allVentes));
-$montantTotal = $stats->montant_total ?? ($viewData['montantTotal'] ?? 0);
-$montantEncaisse = $stats->montant_encaisse ?? ($viewData['montantEncaisse'] ?? 0);
+$allVentes = $viewData['allVentes'] ?? [];
+$stats = $viewData['stats'] ?? null;
+
+$nbrVentes = $stats->nbr_ventes;
+$montantTotal = $stats->montant_total ?? 0;
+$montantEncaisse = $stats->montant_encaisse ??0 ;
+
 $clients = $viewData['clients'] ?? [];
 $produits = $viewData['produits'] ?? [];
-$modePaiement = $viewData['modePaiement'] ?? $viewData['modesPaiement'] ?? [];
+$modePaiement = $viewData['modesPaiement'] ?? [];
 $panier = $viewData['panier'] ?? [];
-$montantTotalPanier = $viewData['montantTotalPanier'] ?? $viewData['panierTotal'] ?? 0;
-$filteredTableau = $viewData['filteredTableau'] ?? $viewData['filtered'] ?? new FilteredModel();
+
+$montantTotalPanier = $viewData['panierTotal'] ?? 0;
+$filteredTableau = $viewData['filteredTableau'] ?? new FilteredModel();
 $pagination = $viewData['pagination'] ?? new PaginationModel();
+
+$errors = $viewData['errors'] ?? \Adja\Core\SessionManager::getData('errors') ?? [];
+if (\Adja\Core\SessionManager::hasKey('errors')) {
+    \Adja\Core\SessionManager::removeData('errors');
+}
 ?>
 
 <div id="view-pos" class="view-section">
@@ -34,7 +42,7 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
         <div class="pos-ticket panel-card">
             <div class="panel-title"><span>🛒 Nouvelle Vente</span><span class="terminal-badge">Terminal POS</span></div>
 
-            <form method="POST" action="<?php Helpers::pathUrl("validerVente"); ?>" id="order-creation-form">
+            <form method="POST" action="<?= Helpers::pathUrl("validerVente", WEB_ROUTE); ?>" id="order-creation-form">
                 <input type="hidden" name="action" value="create_order">
 
                 <div class="form-group">
@@ -48,6 +56,9 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                         <?php endforeach; ?>
                     </select>
                     <span class="credit-info" id="credit-info-text">Limite de crédit autorisée : Sélectionnez un client</span>
+                    <?php if (!empty($errors['client_id'])): ?>
+                        <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['client_id'] ?></small>
+                    <?php endif; ?>
                 </div>
 
                 <div class="articles-section">
@@ -64,15 +75,25 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php if (!empty($errors['produit_id'])): ?>
+                                <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['produit_id'] ?></small>
+                            <?php endif; ?>
                         </div>
 
                         <div class="form-group quantity">
                             <label for="pos-qty">Qté</label>
                             <input type="number" name="quantite" id="pos-qty" class="form-control" value="1" min="1">
+                            <?php if (!empty($errors['quantite'])): ?>
+                                <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['quantite'] ?></small>
+                            <?php endif; ?>
                         </div>
 
                         <button type="submit" name="btnSaveVente" value="addPanier" class="btn-add" title="Ajouter au panier">+</button>
                     </div>
+
+                    <?php if (!empty($errors['panier'])): ?>
+                        <small style="color: var(--danger, #ef4444); font-size: 11px; margin-bottom: 8px; display: block; font-weight: 600;"><?= $errors['panier'] ?></small>
+                    <?php endif; ?>
 
                     <table class="cart-table">
                         <thead>
@@ -90,14 +111,17 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                                     <td colspan="5" class="empty-cart">Panier vide. Ajoutez des articles.</td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($panier as $index => $ligne): ?>
+                                <?php
+                                    foreach ($panier as $index => $ligne):
+                                    $prod = $ligne['produit'];
+                                ?>
                                     <tr>
-                                        <td><?= $ligne['libelle'] ?></td>
+                                        <td><?= $prod->getLibelle() ?></td>
                                         <td><?= $ligne['quantite'] ?></td>
-                                        <td><?= $ligne['prix_unitaire'] ?> F</td>
-                                        <td style="font-weight: 700; color: var(--accent);"><?= $ligne['montant'] ?> F</td>
+                                        <td><?= $prod->getPrixVente()  ?> F</td>
+                                        <td style="font-weight: 700; color: var(--accent);"><?= $ligne['sousTotal'] ?> F</td>
                                         <td style="text-align: right;">
-                                            <button type="submit" name="index" value="<?= $index ?>" formaction="<?php Helpers::pathUrl("supprimerDuPanier"); ?>" formmethod="POST" class="btn-action" style="color: var(--danger); border-color: rgba(248, 113, 113, 0.3);">✕</button>
+                                            <button type="submit" name="index" value="<?= $index ?>" formaction="<?= Helpers::pathUrl("supprimerDuPanier", WEB_ROUTE); ?>" formmethod="POST" class="btn-action" style="color: var(--danger); border-color: rgba(248, 113, 113, 0.3);">✕</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -121,11 +145,17 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                                 <option value="<?= $mode->getId() ?>"><?= $mode->getNom() ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if (!empty($errors['mode_reglement'])): ?>
+                            <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['mode_reglement'] ?></small>
+                        <?php endif; ?>
                     </div>
 
                     <div class="form-group">
                         <label for="pos-montant-verse">Versé (Avance)</label>
                         <input type="number" name="montant_verse" id="pos-montant-verse" class="form-control" value="<?= $montantTotalPanier ?>" min="0" max="<?= $montantTotalPanier ?>">
+                        <?php if (!empty($errors['montant_verse'])): ?>
+                            <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['montant_verse'] ?></small>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -143,7 +173,7 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                 <span>Registre Général des Ventes & Commandes</span>
             </div>
 
-            <form method="GET" action="<?php Helpers::pathUrl("pos"); ?>" class="filtres" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; background: rgba(11, 15, 25, 0.6); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); align-items: center;">
+            <form method="GET" action="<?= Helpers::pathUrl("pos", WEB_ROUTE); ?>" class="filtres" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; background: rgba(11, 15, 25, 0.6); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); align-items: center;">
                 <input type="text" name="search" class="search-control" style="flex: 1; min-width: 180px;" value="<?= $filteredTableau->getFilter('search') ?? '' ?>" placeholder="N° Facture, client, tél...">
                 
                 <select name="statut" class="form-control" style="width: auto; min-width: 140px; padding: 9px 12px; font-size: 12px;" onchange="this.form.submit()">
@@ -154,7 +184,7 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                 </select>
 
                 <button type="submit" class="btn-action" style="padding: 9px 16px;">Filtrer</button>
-                <a href="<?php Helpers::pathUrl("pos"); ?>" class="btn-action" style="text-decoration: none;">Réinitialiser</a>
+                <a href="<?= Helpers::pathUrl("pos", WEB_ROUTE); ?>" class="btn-action" style="text-decoration: none;">Réinitialiser</a>
 
                 <span style="margin-left: auto; font-size: 11px; color: var(--text-muted);">
                     <b><?= $pagination->getTotalElements() ?? 0 ?></b> vente(s)

@@ -2,196 +2,107 @@
 
 namespace App\Core;
 
+use Adja\Core\Controller;
+use Adja\Core\SessionManager;
+
 class Router
 {
     private array $routes = [];
 
     public function __construct()
     {
+        if (!defined("WEB_ROUTE")) {
+            $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+            if ($scriptDir === '/' || $scriptDir === '.') {
+                $scriptDir = '';
+            }
+            define("WEB_ROUTE", $scriptDir);
+        }
+
         $this->routes = [
             '/' => [
-                'controller' => 'DashboardController',
-                'className' => 'App\\Controller\\DashboardController',
-                'action' => 'index',
-            ],
-            '/dashboard' => [
-                'controller' => 'DashboardController',
-                'className' => 'App\\Controller\\DashboardController',
-                'action' => 'index',
-            ],
-            '/dashboard/quick-supply' => [
-                'controller' => 'DashboardController',
-                'className' => 'App\\Controller\\DashboardController',
-                'action' => 'quickSupply',
-            ],
-            '/dashboard/quickSupply' => [
-                'controller' => 'DashboardController',
-                'className' => 'App\\Controller\\DashboardController',
-                'action' => 'quickSupply',
+                'controller' => 'POSController',
+                'className' => 'POSController',
+                'action' => 'getAllVente',
             ],
             '/pos' => [
                 'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
-                'action' => 'getAllVente',
-            ],
-            '/ventes' => [
-                'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
+                'className' => 'POSController',
                 'action' => 'getAllVente',
             ],
             '/validerVente' => [
                 'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
+                'className' => 'POSController',
                 'action' => 'validerVente',
-            ],
-            '/pos/valider' => [
-                'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
-                'action' => 'validerVente',
-            ],
-            '/ajouterAuPanier' => [
-                'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
-                'action' => 'ajouterAuPanier',
-            ],
-            '/pos/panier/add' => [
-                'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
-                'action' => 'ajouterAuPanier',
             ],
             '/supprimerDuPanier' => [
                 'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
+                'className' => 'POSController',
                 'action' => 'supprimerDuPanier',
             ],
-            '/pos/panier/remove' => [
-                'controller' => 'POSController',
-                'className' => 'App\\Controller\\POSController',
-                'action' => 'supprimerDuPanier',
+            //---------------------------------------------
+            '/dashboard' => [
+                'controller' => 'DashboardController',
+                'className' => 'DashboardController',
+                'action' => 'index',
             ],
+            '/dashboard/quickSupply' => [
+                'controller' => 'DashboardController',
+                'className' => 'DashboardController',
+                'action' => 'quickSupply',
+            ],
+            //---------------------------------------------
             '/dettes' => [
                 'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
+                'className' => 'DetteController',
                 'action' => 'getAllDettes',
             ],
             '/dettes/rembourser' => [
                 'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
+                'className' => 'DetteController',
                 'action' => 'enregistrerRemboursementDette',
             ],
-            '/rembourserDette' => [
-                'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
-                'action' => 'enregistrerRemboursementDette',
-            ],
-            '/enregistrerPaiement' => [
-                'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
-                'action' => 'enregistrerRemboursementDette',
-            ],
-            '/dettes/paiement' => [
-                'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
-                'action' => 'enregistrerRemboursementDette',
-            ],
-            '/paiements/save' => [
-                'controller' => 'DetteController',
-                'className' => 'App\\Controller\\DetteController',
-                'action' => 'enregistrerRemboursementDette',
-            ],
+            //---------------------------------------------
             '/appros' => [
                 'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
+                'className' => 'SupplyController',
                 'action' => 'index',
-            ],
-            '/appro' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'index',
-            ],
-            '/approvisionnements' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'index',
-            ],
-            '/appros/save' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'saveAppro',
-            ],
-            '/appro/save' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'saveAppro',
             ],
             '/appros/receive' => [
                 'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
+                'className' => 'SupplyController',
                 'action' => 'receiveAppro',
             ],
-            '/appro/receive' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'receiveAppro',
-            ],
-            '/receiveAppro' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'receiveAppro',
-            ],
-            '/receptionnerAppro' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'receiveAppro',
-            ],
-            '/receptionnerBL' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'receiveAppro',
-            ],
-            '/validerReception' => [
-                'controller' => 'SupplyController',
-                'className' => 'App\\Controller\\SupplyController',
-                'action' => 'receiveAppro',
-            ],
+            //---------------------------------------------
             '/produits' => [
                 'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
-                'action' => 'index',
-            ],
-            '/catalog' => [
-                'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
-                'action' => 'index',
-            ],
-            '/tiers' => [
-                'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
+                'className' => 'ProduitController',
                 'action' => 'index',
             ],
             '/produits/add' => [
                 'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
+                'className' => 'ProduitController',
                 'action' => 'addProduct',
             ],
             '/clients/add' => [
                 'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
+                'className' => 'ProduitController',
                 'action' => 'addClient',
             ],
             '/fournisseurs/add' => [
                 'controller' => 'ProduitController',
-                'className' => 'App\\Controller\\ProduitController',
+                'className' => 'ProduitController',
                 'action' => 'addSupplier',
             ],
+            //---------------------------------------------
             '/login' => [
                 'controller' => 'AuthController',
-                'className' => 'App\\Controller\\AuthController',
+                'className' => 'AuthController',
                 'action' => 'login',
             ],
             '/logout' => [
                 'controller' => 'AuthController',
-                'className' => 'App\\Controller\\AuthController',
+                'className' => 'AuthController',
                 'action' => 'logout',
             ],
         ];
@@ -228,42 +139,39 @@ class Router
             exit;
         }
 
-        // Authenticated check
-        if ($uri !== '/login' && !SessionManager::isConnect()) {
-            Controller::redirectToRoute("login");
+        $keyUserConnect = defined('KEY_USERCONNECT') ? KEY_USERCONNECT : 'userConnect';
+        $baseUrl = defined('WEB_ROUTE') ? WEB_ROUTE : '';
+        if ($uri !== '/login' && !SessionManager::hasKey($keyUserConnect)) {
+            Controller::redirectToRoute("login", $baseUrl);
             return;
         }
 
         $controllerFile = $this->routes[$uri]['controller'];
-        $className = $this->routes[$uri]['className'] ?? "App\\Controller\\$controllerFile";
+        $className = $this->routes[$uri]['className'] ?? $controllerFile;
         $action = $this->routes[$uri]['action'];
 
-        if (class_exists($className)) {
-            if (method_exists($className, $action)) {
-                $className::$action();
-                return;
-            }
-        }
+        $filePath = dirname(__DIR__) . "/Controller/$controllerFile.php";
 
-        $possiblePaths = [
-            dirname(__DIR__) . "/Controller/$controllerFile.php",
-            dirname(__DIR__) . "/Controllers/$controllerFile.php",
-        ];
+        if (file_exists($filePath)) {
+            require_once $filePath;
 
-        foreach ($possiblePaths as $filePath) {
-            if (file_exists($filePath)) {
-                require_once $filePath;
+            $targetClass = class_exists("App\\Controller\\$className") ? "App\\Controller\\$className" : (class_exists($className) ? $className : null);
 
-                if (class_exists($className)) {
-                    if (method_exists($className, $action)) {
-                        $className::$action();
-                        return;
-                    }
-                }
-                if (function_exists($action)) {
-                    $action();
+            if ($targetClass !== null) {
+                $controllerInstance = new $targetClass();
+                if (method_exists($controllerInstance, $action)) {
+                    $controllerInstance->$action();
                     return;
                 }
+                if (method_exists($targetClass, $action)) {
+                    $targetClass::$action();
+                    return;
+                }
+            }
+
+            if (function_exists($action)) {
+                $action();
+                return;
             }
         }
 

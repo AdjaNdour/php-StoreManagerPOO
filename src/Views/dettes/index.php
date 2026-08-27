@@ -1,18 +1,22 @@
 <?php
-use App\Core\Helpers;
+use Adja\Core\Helpers;
 use App\Model\DTO\FilteredModel;
 use App\Model\DTO\PaginationModel;
 
-$allDettes = $viewData['allDettes'] ?? $viewData['dettes'] ?? [];
-$stats = $viewData['stats'] ?? $viewData['statistiques'] ?? null;
-$modes = $viewData['modes'] ?? $viewData['modesPaiement'] ?? [];
+$allDettes = $viewData['dettes'] ?? [];
+$stats = $viewData['statistiques'] ?? null;
+$modes = $viewData['modesPaiement'] ?? [];
 
-$creancesActives = $stats->total_restant ?? ($viewData['creancesActives'] ?? 0);
-$clientsDebiteurs = $stats->nbr_dettes ?? ($viewData['clientsDebiteurs'] ?? count($allDettes));
-$totalRecouvrements = $stats->total_verse ?? ($viewData['totalRecouvrements'] ?? 0);
-$produitsParDette = $viewData['produitsParDette'] ?? [];
-$filteredTableau = $viewData['filteredTableau'] ?? $viewData['filtered'] ?? new FilteredModel();
-$pagination = $viewData['pagination'] ?? new PaginationModel();
+$creancesActives = $stats->total_restant ?? 0;
+$clientsDebiteurs = $stats->nbr_dettes  ?? 0;
+$totalRecouvrements = $stats->total_verse ?? 0;
+$filteredTableau = $viewData['filteredTableau'] ?? null;
+$pagination = $viewData['pagination'] ?? null;
+
+$errors = $viewData['errors'] ?? \Adja\Core\SessionManager::getData('errors') ?? [];
+if (\Adja\Core\SessionManager::hasKey('errors')) {
+    \Adja\Core\SessionManager::removeData('errors');
+}
 ?>
 
 <div id="view-dettes" class="view-section" style="display: block;">
@@ -48,7 +52,7 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
             </div>
 
             <!-- Filters form -->
-            <form method="GET" action="<?php Helpers::pathUrl("dettes"); ?>" class="filtres" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; background: rgba(11, 15, 25, 0.6); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); align-items: center;">
+            <form method="GET" action="<?= Helpers::pathUrl("dettes", WEB_ROUTE); ?>" class="filtres" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; background: rgba(11, 15, 25, 0.6); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); align-items: center;">
                 <input type="text" name="search" class="search-control" style="flex: 1; min-width: 200px;" value="<?= $filteredTableau->getFilter('search') ?? '' ?>" placeholder="Rechercher client, réf dette, facture...">
 
                 <select name="statut" class="form-control" style="width: auto; min-width: 150px; padding: 9px 12px; font-size: 12px;" onchange="this.form.submit()">
@@ -58,7 +62,7 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                 </select>
 
                 <button type="submit" class="btn-action" style="padding: 9px 16px;">Filtrer</button>
-                <a href="<?php Helpers::pathUrl("dettes"); ?>" class="btn-action" style="text-decoration: none;">Réinitialiser</a>
+                <a href="<?= Helpers::pathUrl("dettes", WEB_ROUTE); ?>" class="btn-action" style="text-decoration: none;">Réinitialiser</a>
 
                 <span style="margin-left: auto; font-size: 11px; color: var(--text-muted);">
                     <b><?= $pagination->getTotalElements() ?? 0 ?></b> dette(s)
@@ -227,22 +231,28 @@ $pagination = $viewData['pagination'] ?? new PaginationModel();
                                                 <button type="button" onclick="setRepayAmount(<?= $dette->getId() ?>, <?= (int)round($dette->getMontantRestant() / 2) ?>)" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); color: var(--text-main); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">50% (<?= round($dette->getMontantRestant() / 2) ?> F)</button>
                                             </div>
 
-                                            <form method="POST" action="<?php Helpers::pathUrl('dettes/rembourser'); ?>" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+                                            <form method="POST" action="<?= Helpers::pathUrl('dettes/rembourser', WEB_ROUTE); ?>" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
                                                 <input type="hidden" name="action" value="add_payment">
                                                 <input type="hidden" name="dette_id" value="<?= $dette->getId() ?>">
 
                                                 <div style="flex: 1; min-width: 180px;">
                                                     <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Montant du Versement (FCFA)</label>
-                                                    <input type="number" name="montant_verse" id="repay-input-<?= $dette->getId() ?>" class="form-control" max="<?= (int)$dette->getMontantRestant() ?>" value="<?= (int)$dette->getMontantRestant() ?>" min="1" required style="font-size: 13px; font-weight: 700; padding: 10px 12px; background: #0b0f19; border: 1px solid var(--border-color); color: white; width: 100%;">
+                                                    <input type="number" name="montant_verse" id="repay-input-<?= $dette->getId() ?>" class="form-control" max="<?= (int)$dette->getMontantRestant() ?>" value="<?= (int)$dette->getMontantRestant() ?>" min="1"  style="font-size: 13px; font-weight: 700; padding: 10px 12px; background: #0b0f19; border: 1px solid var(--border-color); color: white; width: 100%;">
+                                                    <?php if (!empty($errors['montant_verse']) || !empty($errors['montant'])): ?>
+                                                        <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['montant_verse'] ?? $errors['montant'] ?></small>
+                                                    <?php endif; ?>
                                                 </div>
 
                                                 <div style="flex: 1; min-width: 180px;">
                                                     <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Canal de Paiement</label>
-                                                    <select name="mode_paiement" class="form-control" style="font-size: 13px; font-weight: 600; padding: 10px 12px; background: #0b0f19; border: 1px solid var(--border-color); color: white; width: 100%;" required>
+                                                    <select name="mode_paiement" class="form-control" style="font-size: 13px; font-weight: 600; padding: 10px 12px; background: #0b0f19; border: 1px solid var(--border-color); color: white; width: 100%;" >
                                                         <?php foreach ($modes as $mode): ?>
                                                             <option value="<?= $mode->getId() ?>"><?= $mode->getNom() ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
+                                                    <?php if (!empty($errors['mode_paiement'])): ?>
+                                                        <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['mode_paiement'] ?></small>
+                                                    <?php endif; ?>
                                                 </div>
 
                                                 <div>

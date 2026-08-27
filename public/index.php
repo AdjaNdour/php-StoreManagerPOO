@@ -4,12 +4,8 @@ if (!defined('PATHBASE')) {
     define('PATHBASE', dirname(__DIR__));
 }
 
-if (!defined('WEB_ROUTE')) {
-    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-    if ($scriptDir === '/' || $scriptDir === '.') {
-        $scriptDir = '';
-    }
-    define('WEB_ROUTE', $scriptDir);
+if (!defined('KEY_USERCONNECT')) {
+    define('KEY_USERCONNECT', 'userConnect');
 }
 
 if (file_exists(PATHBASE . '/vendor/autoload.php')) {
@@ -17,9 +13,11 @@ if (file_exists(PATHBASE . '/vendor/autoload.php')) {
 }
 
 use App\Core\Router;
-use App\Core\SessionManager;
+use Adja\Core\SessionManager;
+use Adja\Core\Database;
 
-SessionManager::sessionStart();
+Database::init('localhost', 5432, 'storemanagerpro', 'postgres', 'kiki', 'pgsql');
+SessionManager::startSession();
 
 $router = new Router();
 $router->run();

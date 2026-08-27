@@ -9,7 +9,7 @@ use App\Model\Entity\Approvisionnement;
 use App\Model\Entity\LigneApprovisionnement;
 use App\Model\DTO\FilteredModel;
 use App\Model\DTO\PaginationModel;
-use App\Core\Database;
+use Adja\Core\Database;
 use Exception;
 
 class SupplyService
@@ -17,26 +17,6 @@ class SupplyService
     public static function getAllFiltered(FilteredModel $filtered, PaginationModel $pagination): array
     {
         return ApprovisionnementRepository::selectAllFiltered($filtered, $pagination);
-    }
-
-    public static function getAll(): array
-    {
-        return ApprovisionnementRepository::selectAll();
-    }
-
-    public static function getById(int $id): ?Approvisionnement
-    {
-        return ApprovisionnementRepository::selectById($id);
-    }
-
-    public static function getByReferenceBl(string $referenceBl): ?Approvisionnement
-    {
-        return ApprovisionnementRepository::selectByReferenceBl($referenceBl);
-    }
-
-    public static function getLignesByApproId(int $approId): array
-    {
-        return ApprovisionnementRepository::selectLignesByApproId($approId);
     }
 
     public static function getStatistiques(): object
@@ -51,7 +31,7 @@ class SupplyService
         return "BL-" . $prefix . "-" . $id;
     }
 
-    public static function validerApprovisionnement(Approvisionnement $appro): int
+    public static function save(Approvisionnement $appro): int
     {
         if ($appro->getFournisseurId() <= 0) {
             throw new Exception("Le fournisseur est obligatoire.");
@@ -64,16 +44,6 @@ class SupplyService
         }
 
         return ApprovisionnementRepository::insert($appro);
-    }
-
-    public static function enregistrerApprovisionnement(Approvisionnement $appro): int
-    {
-        return self::validerApprovisionnement($appro);
-    }
-
-    public static function save(Approvisionnement $appro): int
-    {
-        return self::validerApprovisionnement($appro);
     }
 
     public static function receptionnerBL(int $approId, array $quantitesRecues = []): bool
@@ -116,6 +86,6 @@ class SupplyService
         );
 
         $appro->ajouterLigne($ligne);
-        return self::validerApprovisionnement($appro);
+        return self::save($appro);
     }
 }

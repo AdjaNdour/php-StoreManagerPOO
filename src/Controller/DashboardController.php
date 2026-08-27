@@ -2,9 +2,10 @@
 
 namespace App\Controller;
 
-use App\Core\Controller;
-use App\Core\Request;
-use App\Core\Validator;
+use Adja\Core\Controller;
+use Adja\Core\SessionManager;
+use Adja\Core\Request;
+use Adja\Core\Validator;
 use App\Service\DashboardService;
 use App\Service\SupplyService;
 use Exception;
@@ -13,6 +14,7 @@ class DashboardController
 {
     public static function index(): void
     {
+        $viewsPath = defined('PATHBASE') ? PATHBASE . '/src/Views' : 'src/Views';
         $kpis = DashboardService::getKpis();
         $dernieresVentes = DashboardService::getDernieresVentes(5);
         $dettesDuJour = DashboardService::getDettesDuJour();
@@ -21,6 +23,11 @@ class DashboardController
         $clientsDebiteurs = DashboardService::getClientsDebiteurs();
         $soldeFournisseurs = DashboardService::getSoldeFournisseurs();
         $performanceVendeurs = DashboardService::getPerformanceVendeurs();
+
+        $errors = SessionManager::getData('errors') ?? [];
+        if (SessionManager::hasKey('errors')) {
+            SessionManager::removeData('errors');
+        }
 
         Controller::renderViewLayout("dashboard", "base", [
             'kpis' => $kpis,
@@ -31,12 +38,14 @@ class DashboardController
             'clientsDebiteurs' => $clientsDebiteurs,
             'soldeFournisseurs' => $soldeFournisseurs,
             'performanceVendeurs' => $performanceVendeurs,
+            'errors' => $errors,
             'currentPage' => 'dashboard'
-        ]);
+        ], $viewsPath);
     }
 
     public static function quickSupply(): void
     {
+        $baseUrl = defined('WEB_ROUTE') ? WEB_ROUTE : '';
         if (Request::isPost()) {
             $produitId = (int)Request::post('produit_id', 0);
             $fournisseurId = (int)Request::post('fournisseur_id', 0);
@@ -52,11 +61,13 @@ class DashboardController
                 try {
                     SupplyService::commandeRapide($produitId, $fournisseurId, $quantite, $coutUnitaire);
                 } catch (Exception $e) {
-                    // ignore or log
+                    SessionManager::setData('error', $e->getMessage());
                 }
+            } else {
+                SessionManager::setData('errors', $errors);
             }
         }
 
-        Controller::redirectToRoute("dashboard");
+        Controller::redirectToRoute("dashboard", $baseUrl);
     }
 }

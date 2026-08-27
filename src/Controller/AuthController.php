@@ -2,18 +2,22 @@
 
 namespace App\Controller;
 
-use App\Core\Controller;
-use App\Core\SessionManager;
-use App\Core\Request;
-use App\Core\Validator;
+use Adja\Core\Controller;
+use Adja\Core\SessionManager;
+use Adja\Core\Request;
+use Adja\Core\Validator;
 use App\Service\UserService;
 
 class AuthController
 {
     public static function login(): void
     {
-        if (SessionManager::isConnect()) {
-            Controller::redirectToRoute("dashboard");
+        $keyUserConnect = defined('KEY_USERCONNECT') ? KEY_USERCONNECT : 'userConnect';
+        $baseUrl = defined('WEB_ROUTE') ? WEB_ROUTE : '';
+        $viewsPath = defined('PATHBASE') ? PATHBASE . '/src/Views' : 'src/Views';
+
+        if (SessionManager::hasKey($keyUserConnect)) {
+            Controller::redirectToRoute("dashboard", $baseUrl);
             return;
         }
 
@@ -29,10 +33,10 @@ class AuthController
             Validator::required($password, 'password', $errors, "Le mot de passe est obligatoire.");
 
             if (!Validator::hasErrors($errors)) {
-                $user = UserService::getUserByEmail($email);
+                $user = UserService::getByEmail($email);
                 if ($user && $user->verifyPassword($password)) {
-                    SessionManager::saveData(KEY_USERCONNECT, $user);
-                    Controller::redirectToRoute("dashboard");
+                    SessionManager::setData($keyUserConnect, $user);
+                    Controller::redirectToRoute("dashboard", $baseUrl);
                     return;
                 } else {
                     $errors['auth'] = "Identifiants invalides (email ou mot de passe incorrect).";
@@ -44,12 +48,13 @@ class AuthController
             'errors' => $errors,
             'error' => $errors['auth'] ?? reset($errors) ?: null,
             'email' => $email
-        ]);
+        ], $viewsPath);
     }
 
     public static function logout(): void
     {
+        $baseUrl = defined('WEB_ROUTE') ? WEB_ROUTE : '';
         SessionManager::destroySession();
-        Controller::redirectToRoute("login");
+        Controller::redirectToRoute("login", $baseUrl);
     }
 }

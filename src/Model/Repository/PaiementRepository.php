@@ -2,20 +2,18 @@
 
 namespace App\Model\Repository;
 
-use App\Core\Database;
+use Adja\Core\Database;
+use App\Model\Entity\Paiement;
 use Exception;
 use Throwable;
 
 class PaiementRepository
 {
-    public static function enregistrerPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
+
+    public static function insertPaiement(int $detteId, float $montant, int $modePaiementId, ?int $utilisateurId = null, ?string $notes = null): bool
     {
         $pdo = Database::getInstance();
-        $startedTx = false;
-        if (!$pdo->inTransaction()) {
-            $pdo->beginTransaction();
-            $startedTx = true;
-        }
+        $pdo->beginTransaction();
 
         try {
             $sqlDette = "SELECT d.*, v.id AS vente_id, v.montant_total, v.montant_verse AS vente_montant_verse
@@ -23,16 +21,15 @@ class PaiementRepository
                          JOIN ventes v ON v.id = d.vente_id
                          WHERE d.id = :id FOR UPDATE";
 
-            $detteRow = Database::executeQuery($sqlDette, ['id' => $detteId], true);
-            if (!$detteRow) {
+            $detteSelectionne = Database::executeQuery($sqlDette, ['id' => $detteId], true);
+
+            if (!$detteSelectionne) {
                 throw new Exception("Dette introuvable.");
             }
 
-            $montantRestantActuel = (float)$detteRow->montant_restant;
-            if ($montantRestantActuel <= 0) {
-                throw new Exception("Cette dette est déjà intégralement soldée.");
-            }
+            $montantRestantActuel = (float)$detteSelectionne->montant_restant;//a demander
 
+         
             if ($montant > $montantRestantActuel) {
                 throw new Exception("Le montant versé ($montant FCFA) est supérieur au montant restant ($montantRestantActuel FCFA).");
             }
@@ -42,14 +39,16 @@ class PaiementRepository
 
             Database::executeUpdate($sqlInsertPaiement, [
                 'montant' => $montant,
-                'notes' => $notes ?: 'Règlement dette #' . $detteRow->ref,
+                'notes' => $notes ?: 'Règlement dette #' . $detteSelectionne->ref,
                 'dette_id' => $detteId,
                 'mode_paiement_id' => $modePaiementId,
-                'utilisateur_id' => $utilisateurId ?? 2
+                'utilisateur_id' => $utilisateurId
             ]);
 
-            $nouveauMontantVerse = (float)$detteRow->montant_verse + $montant;
-            $nouveauMontantRestant = max(0.0, (float)$detteRow->montant_initial - $nouveauMontantVerse);
+            $nouveauMontantVerse = (float)$detteSelectionne->montant_verse + $montant;
+
+            $nouveauMontantRestant = max(0.0, (float)$detteSelectionne->montant_initial - $nouveauMontantVerse);
+
             $nouveauStatutDetteId = ($nouveauMontantRestant <= 0.0) ? 2 : 1;
 
             $sqlUpdateDette = "UPDATE dettes 
@@ -65,12 +64,12 @@ class PaiementRepository
                 'id' => $detteId
             ]);
 
-            $venteId = (int)$detteRow->vente_id;
-            $nouveauVerseVente = (float)$detteRow->vente_montant_verse + $montant;
+            $venteId = (int)$detteSelectionne->vente_id;
+            $nouveauVerseVente = (float)$detteSelectionne->vente_montant_verse + $montant;
             $nouveauStatutVente = ($nouveauMontantRestant <= 0.0) ? 'PAYEE' : 'AVANCE';
 
-            $sqlUpdateVente = "UPDATE ventes 
-                               SET montant_verse = :verse, 
+            $sqlUpdateVente = "UPDATE ventes
+                               SET montant_verse = :verse,
                                    statut = :statut
                                WHERE id = :id";
 
@@ -80,13 +79,11 @@ class PaiementRepository
                 'id' => $venteId
             ]);
 
-            if ($startedTx && $pdo->inTransaction()) {
-                $pdo->commit();
-            }
+            $pdo->commit();
 
             return true;
         } catch (Throwable $e) {
-            if ($startedTx && $pdo->inTransaction()) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;

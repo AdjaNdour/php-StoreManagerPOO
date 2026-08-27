@@ -8,39 +8,14 @@ use App\Model\Repository\ClientRepository;
 use App\Model\Entity\Vente;
 use App\Model\DTO\FilteredModel;
 use App\Model\DTO\PaginationModel;
-use App\Core\Database;
+use Adja\Core\Database;
 use Exception;
 
 class VenteService
 {
-    public static function getAllVentesFiltered(FilteredModel $filtered, PaginationModel $pagination): array
+    public static function getAllFiltered(FilteredModel $filtered, PaginationModel $pagination): array
     {
-        return VenteRepository::selectAllVentesFiltered($filtered, $pagination);
-    }
-
-    public static function getAll(): array
-    {
-        return VenteRepository::selectAllVente();
-    }
-
-    public static function getAllVente(): array
-    {
-        return VenteRepository::selectAllVente();
-    }
-
-    public static function getById(int $id): ?Vente
-    {
-        return VenteRepository::selectById($id);
-    }
-
-    public static function getByNumeroFacture(string $numeroFacture): ?Vente
-    {
-        return VenteRepository::selectByNumeroFacture($numeroFacture);
-    }
-
-    public static function getLignesByVenteId(int $venteId): array
-    {
-        return VenteRepository::selectLignesByVenteId($venteId);
+        return VenteRepository::selectAllFiltered($filtered, $pagination);
     }
 
     public static function getStatistiques(): object
@@ -54,11 +29,9 @@ class VenteService
         return "FAC-" . date('Ymd') . "-" . str_pad((string)$id, 4, '0', STR_PAD_LEFT);
     }
 
-    public static function validerVente(Vente $vente): int
+    public static function save(Vente $vente): int
     {
-        if ($vente->getClientId() <= 0) {
-            throw new Exception("Un client est obligatoire.");
-        }
+     
 
         if (!self::verifierPanier($vente)) {
             throw new Exception("Le panier est vide ou invalide.");
@@ -66,10 +39,6 @@ class VenteService
 
         $total = self::calculerTotal($vente);
         $vente->setMontantTotal($total);
-
-        if ($vente->getMontantVerse() < 0) {
-            throw new Exception("Le montant versé ne peut pas être négatif.");
-        }
 
         if ($vente->getMontantVerse() > $vente->getMontantTotal()) {
             throw new Exception("Le montant versé ne peut pas être supérieur au montant total.");
@@ -86,15 +55,6 @@ class VenteService
         return VenteRepository::insert($vente);
     }
 
-    public static function enregistrerVente(Vente $vente): int
-    {
-        return self::validerVente($vente);
-    }
-
-    public static function save(Vente $vente): int
-    {
-        return self::validerVente($vente);
-    }
 
     public static function verifierPanier(Vente $vente): bool
     {

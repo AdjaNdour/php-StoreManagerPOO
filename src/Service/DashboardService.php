@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Core\Database;
+use Adja\Core\Database;
 use App\Model\Entity\Vente;
 use App\Model\Entity\Dette;
 use App\Model\Entity\Produit;
@@ -92,7 +92,10 @@ class DashboardService
                 ORDER BY v.id DESC LIMIT $limit";
 
         $rows = Database::query($sql, false);
-        return (!empty($rows) && is_array($rows)) ? array_map(fn($row) => Vente::toEntity($row), $rows) : [];
+        if (!empty($rows)) {
+            return array_map(fn($row) => Vente::toEntity($row), $rows);
+        }
+        return [];
     }
 
     public static function getDettesDuJour(): array
@@ -109,7 +112,10 @@ class DashboardService
                 ORDER BY d.id DESC";
 
         $rows = Database::query($sql, false);
-        return (!empty($rows) && is_array($rows)) ? array_map(fn($row) => Dette::toEntity($row), $rows) : [];
+        if (!empty($rows)) {
+            return array_map(fn($row) => Dette::toEntity($row), $rows);
+        }
+        return [];
     }
 
     public static function getRupturesEtAlertes(): array
@@ -122,7 +128,10 @@ class DashboardService
                 ORDER BY p.stock_initial ASC";
 
         $rows = Database::query($sql, false);
-        return (!empty($rows) && is_array($rows)) ? array_map(fn($row) => Produit::toEntity($row), $rows) : [];
+        if (!empty($rows)) {
+            return array_map(fn($row) => Produit::toEntity($row), $rows);
+        }
+        return [];
     }
 
     public static function getLivraisonsDuJour(): array
@@ -135,7 +144,10 @@ class DashboardService
                 ORDER BY a.id DESC";
 
         $rows = Database::query($sql, false);
-        return (!empty($rows) && is_array($rows)) ? array_map(fn($row) => Approvisionnement::toEntity($row), $rows) : [];
+        if (!empty($rows)) {
+            return array_map(fn($row) => Approvisionnement::toEntity($row), $rows);
+        }
+        return [];
     }
 
     public static function getClientsDebiteurs(): array
@@ -150,25 +162,28 @@ class DashboardService
                 ORDER BY cumul_du DESC";
 
         $rows = Database::query($sql, false);
-        return (!empty($rows) && is_array($rows)) ? array_map(function ($row) {
-            $clientId = (int)($row->client_id ?? 0);
-            $sqlDettes = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance,
-                                 v.numero_facture, v.id AS vente_id, sd.nom AS statut_nom
-                          FROM dettes d
-                          JOIN ventes v ON v.id = d.vente_id
-                          JOIN statuts_dette sd ON sd.id = d.statut_dette_id
-                          WHERE d.client_id = :client_id AND d.montant_restant > 0
-                          ORDER BY d.id DESC";
-            $detteRows = Database::executeQuery($sqlDettes, ['client_id' => $clientId], false);
-            $dettes = (!empty($detteRows) && is_array($detteRows)) ? array_map(fn($dRow) => Dette::toEntity($dRow), $detteRows) : [];
+        if (!empty($rows)) {
+            return array_map(function ($row) {
+                $clientId = (int)($row->client_id ?? 0);
+                $sqlDettes = "SELECT d.id AS dette_id, d.id, d.ref, d.montant_initial, d.montant_verse, d.montant_restant, d.date_dette, d.date_echeance,
+                                     v.numero_facture, v.id AS vente_id, sd.nom AS statut_nom
+                              FROM dettes d
+                              JOIN ventes v ON v.id = d.vente_id
+                              JOIN statuts_dette sd ON sd.id = d.statut_dette_id
+                              WHERE d.client_id = :client_id AND d.montant_restant > 0
+                              ORDER BY d.id DESC";
+                $detteRows = Database::executeQuery($sqlDettes, ['client_id' => $clientId], false);
+                $dettes = (!empty($detteRows)) ? array_map(fn($dRow) => Dette::toEntity($dRow), $detteRows) : [];
 
-            return [
-                'client' => Client::toEntity($row),
-                'nbr_dettes' => (int)($row->nbr_dettes ?? 0),
-                'cumul_du' => (float)($row->cumul_du ?? 0),
-                'dettes' => $dettes
-            ];
-        }, $rows) : [];
+                return [
+                    'client' => Client::toEntity($row),
+                    'nbr_dettes' => (int)($row->nbr_dettes ?? 0),
+                    'cumul_du' => (float)($row->cumul_du ?? 0),
+                    'dettes' => $dettes
+                ];
+            }, $rows);
+        }
+        return [];
     }
 
     public static function getSoldeFournisseurs(): array

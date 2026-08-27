@@ -1,5 +1,5 @@
 <?php
-use App\Core\Helpers;
+use Adja\Core\Helpers;
 
 $kpis = $viewData['kpis'] ?? [];
 $ventesRecentes = $viewData['ventesRecentes'] ?? $viewData['dernieresVentes'] ?? [];
@@ -9,6 +9,11 @@ $livraisonsDuJour = $viewData['livraisonsDuJour'] ?? [];
 $clientsDebiteurs = $viewData['clientsDebiteurs'] ?? [];
 $soldeFournisseurs = $viewData['soldeFournisseurs'] ?? [];
 $fournisseurs = $viewData['fournisseurs'] ?? \App\Service\FournisseurService::getAll();
+
+$errors = $viewData['errors'] ?? \Adja\Core\SessionManager::getData('errors') ?? [];
+if (\Adja\Core\SessionManager::hasKey('errors')) {
+    \Adja\Core\SessionManager::removeData('errors');
+}
 ?>
 
 <div id="view-dashboard" class="view-section" style="display: block;">
@@ -174,7 +179,7 @@ $fournisseurs = $viewData['fournisseurs'] ?? \App\Service\FournisseurService::ge
                                     <td style="font-weight: 700;"><?= $d->getMontantInitial() ?> F</td>
                                     <td style="font-weight: 800; color: var(--danger);"><?= $d->getMontantRestant() ?> F</td>
                                     <td>
-                                        <a href="<?php Helpers::pathUrl("dettes"); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--warning); color: var(--warning);">Rembourser</a>
+                                        <a href="<?= Helpers::pathUrl("dettes", WEB_ROUTE); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--warning); color: var(--warning);">Rembourser</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -203,23 +208,32 @@ $fournisseurs = $viewData['fournisseurs'] ?? \App\Service\FournisseurService::ge
                                 <!-- Inline drawer for quick supply request -->
                                 <div class="details-drawer" id="supply-product-drawer-<?= $p->getId() ?>" style="display: none; margin-top: 10px; padding: 10px; background: rgba(8, 12, 24, 0.95); border-radius: 8px;">
                                     <div style="font-weight: 700; font-size: 11px; color: var(--accent); margin-bottom: 6px;">Commande d'Approvisionnement Rapide :</div>
-                                    <form method="POST" action="<?php Helpers::pathUrl("dashboard/quickSupply"); ?>" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; align-items: flex-end;">
+                                    <form method="POST" action="<?= Helpers::pathUrl("dashboard/quickSupply", WEB_ROUTE); ?>" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 8px; align-items: flex-end;">
                                         <input type="hidden" name="produit_id" value="<?= $p->getId() ?>">
                                         <div>
                                             <label style="font-size: 9px; color: var(--text-muted); display: block; margin-bottom: 2px;">Fournisseur</label>
-                                            <select name="fournisseur_id" class="form-control" style="font-size: 11px; padding: 6px;" required>
+                                            <select name="fournisseur_id" class="form-control" style="font-size: 11px; padding: 6px;" >
                                                 <?php foreach ($fournisseurs as $f): ?>
                                                     <option value="<?= $f->getId() ?>" <?= ($p->getFournisseurId() === $f->getId()) ? 'selected' : '' ?>><?= $f->getNom() ?></option>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <?php if (!empty($errors['fournisseur_id'])): ?>
+                                                <small style="color: var(--danger, #ef4444); font-size: 10px; margin-top: 2px; display: block; font-weight: 600;"><?= $errors['fournisseur_id'] ?></small>
+                                            <?php endif; ?>
                                         </div>
                                         <div>
                                             <label style="font-size: 9px; color: var(--text-muted); display: block; margin-bottom: 2px;">Qté</label>
-                                            <input type="number" name="quantite" class="form-control" value="50" min="1" required style="font-size: 11px; padding: 6px;">
+                                            <input type="number" name="quantite" class="form-control" value="50" min="1"  style="font-size: 11px; padding: 6px;">
+                                            <?php if (!empty($errors['quantite'])): ?>
+                                                <small style="color: var(--danger, #ef4444); font-size: 10px; margin-top: 2px; display: block; font-weight: 600;"><?= $errors['quantite'] ?></small>
+                                            <?php endif; ?>
                                         </div>
                                         <div>
                                             <label style="font-size: 9px; color: var(--text-muted); display: block; margin-bottom: 2px;">Coût Achat (F)</label>
-                                            <input type="number" name="cout_achat_unitaire" class="form-control" value="<?= $p->getCoutAchat() > 0 ? $p->getCoutAchat() : round($p->getPrixVente() * 0.7) ?>" min="0" required style="font-size: 11px; padding: 6px;">
+                                            <input type="number" name="cout_achat_unitaire" class="form-control" value="<?= $p->getCoutAchat() > 0 ? $p->getCoutAchat() : round($p->getPrixVente() * 0.7) ?>" min="0"  style="font-size: 11px; padding: 6px;">
+                                            <?php if (!empty($errors['cout_achat'])): ?>
+                                                <small style="color: var(--danger, #ef4444); font-size: 10px; margin-top: 2px; display: block; font-weight: 600;"><?= $errors['cout_achat'] ?></small>
+                                            <?php endif; ?>
                                         </div>
                                         <button type="submit" class="btn-submit btn-success" style="padding: 6px 12px; font-size: 10px; text-transform: uppercase;">Valider BL</button>
                                     </form>
@@ -263,7 +277,7 @@ $fournisseurs = $viewData['fournisseurs'] ?? \App\Service\FournisseurService::ge
                                     <td><?= $a->getFournisseur()->getNom() ?></td>
                                     <td style="font-weight: 800; color: var(--accent);"><?= $a->getCoutAchat() ?> F</td>
                                     <td>
-                                        <a href="<?php Helpers::pathUrl("appros"); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--success); color: var(--success);">Réceptionner</a>
+                                        <a href="<?= Helpers::pathUrl("appros", WEB_ROUTE); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--success); color: var(--success);">Réceptionner</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -330,7 +344,7 @@ $fournisseurs = $viewData['fournisseurs'] ?? \App\Service\FournisseurService::ge
                                                             <td style="color: var(--success);"><?= $dt->getMontantVerse() ?> F</td>
                                                             <td style="color: var(--danger); font-weight: 800;"><?= $dt->getMontantRestant() ?> F</td>
                                                             <td>
-                                                                <a href="<?php Helpers::pathUrl("dettes"); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--danger); color: var(--danger);">Rembourser</a>
+                                                                <a href="<?= Helpers::pathUrl("dettes", WEB_ROUTE); ?>" class="btn-quick-action" style="text-decoration: none; border-color: var(--danger); color: var(--danger);">Rembourser</a>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>

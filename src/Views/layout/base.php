@@ -1,6 +1,11 @@
 <?php
-use App\Core\Helpers;
-use App\Core\SessionManager;
+use Adja\Core\Helpers;
+use Adja\Core\SessionManager;
+
+$flashError = SessionManager::getData('error');
+$flashSuccess = SessionManager::getData('success');
+if ($flashError !== null) SessionManager::remove('error');
+if ($flashSuccess !== null) SessionManager::remove('success');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -10,12 +15,12 @@ use App\Core\SessionManager;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?? 'StoreManager Pro' ?> | ERP Tactical Workspace</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?php Helpers::asset('base.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('dashboard.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('ventes.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('dettes.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('appros.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('catalog.css'); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/base.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/dashboard.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/ventes.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/dettes.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/appros.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/catalog.css', WEB_ROUTE); ?>">
 </head>
 
 <body>
@@ -35,19 +40,25 @@ use App\Core\SessionManager;
                 $isAppros = str_contains($currentUri, 'appros') || str_contains($currentUri, 'approvisionnements');
                 $isCatalog = str_contains($currentUri, 'produits') || str_contains($currentUri, 'catalog') || str_contains($currentUri, 'tiers');
                 ?>
-                <a href="<?php Helpers::pathUrl("dashboard"); ?>" class="nav-item <?= $isDashboard ? 'active' : '' ?>">Tableau de Bord</a>
-                <a href="<?php Helpers::pathUrl("pos"); ?>" class="nav-item <?= $isPos ? 'active' : '' ?>">Ventes / POS</a>
-                <a href="<?php Helpers::pathUrl("dettes"); ?>" class="nav-item <?= $isDettes ? 'active' : '' ?>">Gestion Dettes</a>
-                <a href="<?php Helpers::pathUrl("appros"); ?>" class="nav-item <?= $isAppros ? 'active' : '' ?>">Approvisionnements</a>
-                <a href="<?php Helpers::pathUrl("produits"); ?>" class="nav-item <?= $isCatalog ? 'active' : '' ?>">Produits & Tiers</a>
+                <a href="<?= Helpers::pathUrl("dashboard", WEB_ROUTE); ?>" class="nav-item <?= $isDashboard ? 'active' : '' ?>">Tableau de Bord</a>
+                <a href="<?= Helpers::pathUrl("pos", WEB_ROUTE); ?>" class="nav-item <?= $isPos ? 'active' : '' ?>">Ventes / POS</a>
+                <a href="<?= Helpers::pathUrl("dettes", WEB_ROUTE); ?>" class="nav-item <?= $isDettes ? 'active' : '' ?>">Gestion Dettes</a>
+                <a href="<?= Helpers::pathUrl("appros", WEB_ROUTE); ?>" class="nav-item <?= $isAppros ? 'active' : '' ?>">Approvisionnements</a>
+                <a href="<?= Helpers::pathUrl("produits", WEB_ROUTE); ?>" class="nav-item <?= $isCatalog ? 'active' : '' ?>">Produits & Tiers</a>
             </div>
 
             <div style="margin-left: auto; display: flex; align-items: center; gap: 14px;">
+                <?php
+                $keyUserConnect = defined('KEY_USERCONNECT') ? KEY_USERCONNECT : 'userConnect';
+                $userConnect = SessionManager::getData($keyUserConnect);
+                $nomComplet = ($userConnect instanceof \App\Model\Entity\Utilisateur) ? $userConnect->getNomComplet() : ((is_array($userConnect)) ? (($userConnect['prenom'] ?? '') . ' ' . ($userConnect['nom'] ?? '')) : 'Utilisateur');
+                $roleNom = ($userConnect instanceof \App\Model\Entity\Utilisateur) ? ($userConnect->getRole()?->getNom() ?? 'GESTIONNAIRE') : (is_array($userConnect) && isset($userConnect['role']) ? (is_array($userConnect['role']) ? ($userConnect['role']['nom'] ?? 'GESTIONNAIRE') : (string)$userConnect['role']) : 'GESTIONNAIRE');
+                ?>
                 <div style="text-align: right;">
-                    <div style="font-size: 12px; font-weight: 800; color: var(--accent);"><?php Helpers::showProfil(); ?></div>
-                    <div style="font-size: 10px; color: var(--text-muted);"><?php Helpers::showRole(); ?></div>
+                    <div style="font-size: 12px; font-weight: 800; color: var(--accent);"><?= htmlspecialchars($nomComplet) ?></div>
+                    <div style="font-size: 10px; color: var(--text-muted);"><?= htmlspecialchars(strtoupper($roleNom)) ?></div>
                 </div>
-                <a href="<?php Helpers::pathUrl("logout"); ?>" class="btn-quick-action" style="border-color: var(--danger); color: var(--danger); background: rgba(248, 113, 113, 0.08); padding: 8px 12px;">Déconnexion 🚪</a>
+                <a href="<?= Helpers::pathUrl("logout", WEB_ROUTE); ?>" class="btn-quick-action" style="border-color: var(--danger); color: var(--danger); background: rgba(248, 113, 113, 0.08); padding: 8px 12px;">Déconnexion 🚪</a>
             </div>
         </div>
 

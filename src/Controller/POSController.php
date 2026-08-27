@@ -2,17 +2,18 @@
 
 namespace App\Controller;
 
-use App\Core\Controller;
-use App\Core\SessionManager;
-use App\Core\Request;
-use App\Core\Validator;
+use Adja\Core\Controller;
+use Adja\Core\Debug;
+use Adja\Core\SessionManager;
+use Adja\Core\Request;
+use Adja\Core\Validator;
+
 use App\Service\VenteService;
 use App\Service\ProduitService;
 use App\Service\ClientService;
 use App\Service\ModePaiementService;
 use App\Model\Entity\Vente;
 use App\Model\Entity\LigneVente;
-use App\Model\Entity\Client;
 use App\Model\Entity\Utilisateur;
 use App\Model\DTO\FilteredModel;
 use App\Model\DTO\PaginationModel;
@@ -22,48 +23,47 @@ class POSController
 {
     public static function getAllVente(): void
     {
+        $viewsPath = PATHBASE . '/src/Views' ;
         $page = (int)Request::get('page', 1);
+
         $search = (string)Request::get('search', '');
-        $statut = (string)Request::get('statut', 'ALL');
+        $statut = (string)Request::get('statut', 0);
         $clientId = (int)Request::get('client_id', 0);
 
-        $filtered = new FilteredModel([
-            'search' => $search,
-            'statut' => $statut,
-            'client_id' => $clientId
-        ]);
+        $filtered = new FilteredModel(['search' => $search,'statut' => $statut,'client_id' => $clientId]);
 
-        $pagination = new PaginationModel(page: $page, limit: 4);
+        $pagination = new PaginationModel(page: $page);
 
-        $ventes = VenteService::getAllVentesFiltered($filtered, $pagination);
+        $ventes = VenteService::getAllFiltered($filtered, $pagination);
         $produits = ProduitService::getAll();
         $clients = ClientService::getAll();
         $modesPaiement = ModePaiementService::getAll();
         $statistiques = VenteService::getStatistiques();
 
-        $panier = SessionManager::getData('pos_cart') ?? [];
+        $panier = SessionManager::getData('panier-vente') ?? [];
         $panierTotal = 0;
         foreach ($panier as $item) {
-            $panierTotal += ($item['quantite'] * $item['prix_vente']);
+            $panierTotal += $item['sousTotal'];
+        }
+
+        $errors = SessionManager::getData('errors') ?? [];
+        if (SessionManager::hasKey('errors')) {
+            SessionManager::removeData('errors');
         }
 
         Controller::renderViewLayout("pos", "base", [
-            'ventes' => $ventes,
             'allVentes' => $ventes,
             'produits' => $produits,
             'clients' => $clients,
             'modesPaiement' => $modesPaiement,
-            'modePaiement' => $modesPaiement,
-            'statistiques' => $statistiques,
             'stats' => $statistiques,
             'panier' => $panier,
             'panierTotal' => $panierTotal,
-            'montantTotalPanier' => $panierTotal,
+            'errors' => $errors,
             'pagination' => $pagination,
-            'filtered' => $filtered,
             'filteredTableau' => $filtered,
             'currentPage' => 'pos'
-        ]);
+        ], $viewsPath);
     }
 
     public static function ajouterAuPanier(): void
@@ -79,116 +79,117 @@ class POSController
             if (!Validator::hasErrors($errors)) {
                 $produit = ProduitService::getById($produitId);
                 if ($produit) {
-                    $panier = SessionManager::getData('pos_cart') ?? [];
+                    $panier = SessionManager::getData('panier-vente') ?? [];
 
-                    $qteExistante = isset($panier[$produitId]) ? $panier[$produitId]['quantite'] : 0;
-                    $qteTotale = $qteExistante + $quantite;
+                    $qteProduitX = isset($panier[$produitId]) ? $panier[$produitId]['quantite'] : 0;
+
+                    $qteTotale = $qteProduitX + $quantite;
 
                     if ($produit->getStockInitial() >= $qteTotale) {
+
                         $panier[$produitId] = [
-                            'id' => $produit->getId(),
-                            'code' => $produit->getCode(),
-                            'libelle' => $produit->getLibelle(),
-                            'prix_vente' => $produit->getPrixVente(),
-                            'prix_unitaire' => $produit->getPrixVente(),
-                            'quantite' => $qteTotale,
-                            'montant' => $qteTotale * $produit->getPrixVente(),
-                            'sous_total' => $qteTotale * $produit->getPrixVente(),
+                            'produit' => $produit,
+                            'sousTotal' => $produit->getPrixVente() * $qteTotale,
+                            'quantite' => $qteTotale
                         ];
-                        SessionManager::saveData('pos_cart', $panier);
+                        SessionManager::setData('panier-vente', $panier);
+                    } else {
+                        $errors['quantite'] = "Stock insuffisant (disponible: " . $produit->getStockInitial() . ").";
+                        SessionManager::setData('errors', $errors);
                     }
                 }
+            } else {
+                SessionManager::setData('errors', $errors);
             }
         }
-
-        Controller::redirectToRoute("pos");
+        Controller::redirectToRoute("pos", WEB_ROUTE);
     }
 
     public static function supprimerDuPanier(): void
     {
-        $produitId = (int)(Request::input('produit_id') ?? Request::input('index') ?? 0);
-        $panier = SessionManager::getData('pos_cart') ?? [];
+        $produitId = (int) Request::post('index') ?? 0;
+        $panier = SessionManager::getData('panier-vente') ?? [];
 
         if (isset($panier[$produitId])) {
             unset($panier[$produitId]);
-            SessionManager::saveData('pos_cart', $panier);
+            SessionManager::setData('panier-vente', $panier);
         }
-
-        Controller::redirectToRoute("pos");
+        Controller::redirectToRoute("pos", WEB_ROUTE);
     }
 
     public static function validerVente(): void
     {
+        $keyUserConnect = defined('KEY_USERCONNECT') ? KEY_USERCONNECT : 'userConnect';
+
         if (Request::isPost()) {
             $btnAction = Request::post('btnSaveVente');
+
             if ($btnAction === 'addPanier') {
                 self::ajouterAuPanier();
                 return;
             }
+
             if ($btnAction === 'clearPanier') {
-                SessionManager::removeData('pos_cart');
-                Controller::redirectToRoute("pos");
+                SessionManager::removeData('panier-vente');
+                Controller::redirectToRoute("pos", WEB_ROUTE);
                 return;
             }
 
-            $panier = SessionManager::getData('pos_cart') ?? [];
+            $panier = SessionManager::getData('panier-vente') ?? [];
             if (empty($panier)) {
-                Controller::redirectToRoute("pos");
+                $errors = ['panier' => "Le panier est vide. Veuillez ajouter au moins un produit."];
+                SessionManager::setData('errors', $errors);
+                Controller::redirectToRoute("pos", WEB_ROUTE);
                 return;
             }
 
             $clientId = (int)Request::post('client_id', 0);
-            $modePaiementId = (int)(Request::post('mode_paiement_id') ?? Request::post('mode_reglement') ?? 1);
-            if ($modePaiementId <= 0) {
-                $modePaiementId = 1;
-            }
-
+            $modePaiementId = (int)(Request::post('mode_reglement') ?? 1);
             $montantVerse = (float)Request::post('montant_verse', 0);
-            $dateEcheance = Request::post('date_echeance', null);
 
             $errors = [];
+            
             Validator::isGreaterThanZero($clientId, 'client_id', $errors, "Le client est obligatoire.");
+            Validator::isGreaterThanZero($modePaiementId, 'mode_reglement', $errors, "Le mode de paiement est obligatoire.");
             Validator::isPositive($montantVerse, 'montant_verse', $errors, "Le montant versé doit être positif.");
 
             if (!Validator::hasErrors($errors)) {
                 $client = ClientService::getById($clientId);
                 if ($client) {
                     $numeroFacture = VenteService::genererNumeroFacture();
-
-                    $user = SessionManager::getData(KEY_USERCONNECT);
+                    $user = SessionManager::getData($keyUserConnect);
                     $utilisateur = ($user instanceof Utilisateur) ? $user : null;
 
                     $vente = new Vente(
                         client: $client,
                         numeroFacture: $numeroFacture,
                         montantVerse: $montantVerse,
-                        dateEcheance: !empty($dateEcheance) ? $dateEcheance : null,
                         utilisateur: $utilisateur,
                         modePaiementId: $modePaiementId
                     );
 
                     foreach ($panier as $item) {
-                        $prd = ProduitService::getById((int)$item['id']);
-                        if ($prd) {
-                            $ligne = new LigneVente(
-                                produit: $prd,
-                                quantite: (int)$item['quantite'],
-                                prixUnitaire: (float)$item['prix_vente']
-                            );
-                            $vente->ajouterLigne($ligne);
-                        }
+                        $prd = $item['produit'];
+                        $ligne = new LigneVente(
+                            produit: $prd,
+                            quantite: (int)$item['quantite'],
+                            prixUnitaire: (float)$prd->getPrixVente()
+                        );
+                        $vente->ajouterLigne($ligne);
                     }
 
                     try {
-                        VenteService::validerVente($vente);
-                        SessionManager::removeData('pos_cart');
+                        VenteService::save($vente);
+                        SessionManager::removeData('panier-vente');
                     } catch (Exception $e) {
-                        // Error handled
+                        SessionManager::setData('error', $e->getMessage());
                     }
                 }
+            } else {
+                SessionManager::setData('errors', $errors);
             }
         }
 
-        Controller::redirectToRoute("pos");
+        Controller::redirectToRoute("pos", WEB_ROUTE);
     }
 }

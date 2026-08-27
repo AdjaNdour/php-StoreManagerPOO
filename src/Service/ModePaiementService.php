@@ -11,14 +11,4 @@ class ModePaiementService
     {
         return ModePaiementRepository::selectAll();
     }
-
-    public static function getById(int $id): ?ModePaiement
-    {
-        return ModePaiementRepository::selectById($id);
-    }
-
-    public static function getByNom(string $nom): ?ModePaiement
-    {
-        return ModePaiementRepository::selectByNom($nom);
-    }
 }

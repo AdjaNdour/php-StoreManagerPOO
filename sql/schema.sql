@@ -253,7 +253,7 @@ SELECT
     WHERE montant_restant > 0;
 
 
-    SELECT d.*, p.libelle,
+SELECT d.*, p.libelle,
                     c.nom AS client_nom, c.prenom AS client_prenom, c.telephone AS client_telephone, c.email AS client_email, c.limite_credit AS client_limite,
                        sd.nom AS statut_nom,
                        v.numero_facture, v.statut AS vente_statut
@@ -271,4 +271,4 @@ SELECT d.id,p.* FROM dettes d
                 INNER JOIN lignes_vente lv ON lv.vente_id = v.id
                 INNER JOIN produits p ON lv.produit_id = p.id
                 WHERE d.id = 2 ;
-select * from produits;
+select * from approvisionnements;

@@ -1,5 +1,8 @@
 <?php
-use App\Core\Helpers;
+use Adja\Core\Helpers;
+$error = $viewData['error'] ?? null;
+$errors = $viewData['errors'] ?? [];
+$email = $viewData['email'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -8,8 +11,8 @@ use App\Core\Helpers;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion | StoreManager Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?php Helpers::asset('base.css'); ?>">
-    <link rel="stylesheet" href="<?php Helpers::asset('auth.css'); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/base.css', WEB_ROUTE); ?>">
+    <link rel="stylesheet" href="<?= Helpers::asset('css/auth.css', WEB_ROUTE); ?>">
 </head>
 <body>
     <div class="login-grid">
@@ -130,15 +133,18 @@ use App\Core\Helpers;
                 </div>
 
                 <!-- Formulaire classique -->
-                <form method="POST" action="<?php Helpers::pathUrl("login"); ?>" style="display: flex; flex-direction: column; gap: 16px;">
+                <form method="POST" action="<?= Helpers::pathUrl("login", WEB_ROUTE); ?>" style="display: flex; flex-direction: column; gap: 16px;">
                     <input type="hidden" name="role_key" id="login-role-select" value="admin">
 
                     <div>
                         <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase;">Adresse email</label>
                         <div style="position: relative;">
                             <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;">👤</span>
-                            <input type="email" name="email" id="login-email" class="form-control" value="<?= !empty($email) ? $email : 'admin@storemanager.sn' ?>" placeholder="vous@boutique.sn" style="width: 100%; padding: 12px 14px 12px 40px;" required>
+                            <input type="email" name="email" id="login-email" class="form-control" value="<?= !empty($email) ? $email : 'admin@storemanager.sn' ?>" placeholder="vous@boutique.sn" style="width: 100%; padding: 12px 14px 12px 40px;" >
                         </div>
+                        <?php if (!empty($errors['email'])): ?>
+                            <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['email'] ?></small>
+                        <?php endif; ?>
                     </div>
 
                     <div>
@@ -148,9 +154,12 @@ use App\Core\Helpers;
                         </div>
                         <div style="position: relative;">
                             <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;">🔒</span>
-                            <input type="password" name="password" id="login-password" class="form-control" value="demo1234" placeholder="Votre mot de passe" style="width: 100%; padding: 12px 40px 12px 40px;" required>
+                            <input type="password" name="password" id="login-password" class="form-control" value="demo1234" placeholder="Votre mot de passe" style="width: 100%; padding: 12px 40px 12px 40px;" >
                             <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; cursor: pointer;" onclick="togglePassword()">👁️</span>
                         </div>
+                        <?php if (!empty($errors['password'])): ?>
+                            <small style="color: var(--danger, #ef4444); font-size: 11px; margin-top: 4px; display: block; font-weight: 600;"><?= $errors['password'] ?></small>
+                        <?php endif; ?>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px;">

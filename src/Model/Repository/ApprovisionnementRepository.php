@@ -2,7 +2,7 @@
 
 namespace App\Model\Repository;
 
-use App\Core\Database;
+use Adja\Core\Database;
 use App\Model\Entity\Approvisionnement;
 use App\Model\Entity\LigneApprovisionnement;
 use App\Model\Entity\Fournisseur;
@@ -21,30 +21,28 @@ class ApprovisionnementRepository
         $limit = $pagination->getLimit();
         $offset = $pagination->getOffset();
 
-        $where = ["1=1"];
         $params = [];
+        $sqlFilter = " 1=1 ";
 
         if (!empty($search)) {
-            $where[] = "(a.reference_bl ILIKE :search OR f.nom ILIKE :search OR f.telephone ILIKE :search)";
+            $sqlFilter .= " AND (a.reference_bl ILIKE :search OR f.nom ILIKE :search OR f.telephone ILIKE :search)";
             $params['search'] = "%$search%";
         }
 
-        if (!empty($statut) && $statut !== "0" && $statut !== "ALL") {
+        if (!empty($statut) && $statut !== 0) {
             if ($statut === 'RECU') {
-                $where[] = "a.date_reception IS NOT NULL";
-            } elseif ($statut === 'EN_ATTENTE') {
-                $where[] = "a.date_reception IS NULL";
+                $sqlFilter .= " AND a.date_reception IS NOT NULL";
+            } elseif ($statut === 'EN_COURS' || $statut === 'EN COURS' || $statut === 'EN_ATTENTE') {
+                $sqlFilter .= " AND a.date_reception IS NULL";
             }
         }
-
-        $whereClause = implode(" AND ", $where);
 
         $sqlCount = "SELECT COUNT(DISTINCT a.id) AS total
                      FROM approvisionnements a
                      JOIN fournisseurs f ON f.id = a.fournisseur_id
-                     WHERE $whereClause";
+                     WHERE $sqlFilter ";
 
-        $countRes = Database::executeQuery($sqlCount, $params, true);
+        $countRes = Database::executeQuery($sqlCount, $params);
         $total = (int)($countRes->total ?? 0);
         $pagination->setTotalElements($total);
 
@@ -52,26 +50,26 @@ class ApprovisionnementRepository
                        f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
                 FROM approvisionnements a
                 JOIN fournisseurs f ON f.id = a.fournisseur_id
-                WHERE $whereClause
+                WHERE $sqlFilter
                 ORDER BY a.id DESC
                 LIMIT $limit OFFSET $offset";
 
         $results = Database::executeQuery($sql, $params, false);
-        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
-            $appro = Approvisionnement::toEntity($row);
-            $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
-            return $appro;
-        }, $results) : [];
+
+        if (!empty($results)) {
+            return array_map(function ($approvisionnement) {
+                $appro = Approvisionnement::toEntity($approvisionnement);
+                $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
+                return $appro;
+            }, $results);
+        }
+        return [];
     }
 
     public static function insert(Approvisionnement $appro): int
     {
         $pdo = Database::getInstance();
-        $startedTx = false;
-        if (!$pdo->inTransaction()) {
-            $pdo->beginTransaction();
-            $startedTx = true;
-        }
+        $pdo->beginTransaction();
 
         try {
             $sqlAppro = "INSERT INTO approvisionnements (reference_bl, cout_achat, date_appro, date_reception, fournisseur_id, utilisateur_id)
@@ -102,7 +100,6 @@ class ApprovisionnementRepository
                     'sous_total' => $ligne->getSousTotal()
                 ]);
 
-                // If date_reception was already set upon insert, increment stock immediately
                 if (!empty($appro->getDateReception()) && $ligne->getQuantiteRecue() > 0) {
                     Database::executeUpdate("UPDATE produits SET stock_initial = stock_initial + :qty WHERE id = :id", [
                         'qty' => $ligne->getQuantiteRecue(),
@@ -111,31 +108,28 @@ class ApprovisionnementRepository
                 }
             }
 
-            if ($startedTx && $pdo->inTransaction()) {
-                $pdo->commit();
-            }
+            $pdo->commit();
+
             return $approId;
         } catch (Throwable $e) {
-            if ($startedTx && $pdo->inTransaction()) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
         }
     }
 
-    public static function receptionnerBL(int $approId, array $quantitesRecues = []): bool
+    public static function receptionnerBL(int $approId, array $quantitesDemandees): bool
     {
         $pdo = Database::getInstance();
-        $startedTx = false;
-        if (!$pdo->inTransaction()) {
-            $pdo->beginTransaction();
-            $startedTx = true;
-        }
 
+        $pdo->beginTransaction();
         try {
             $sqlAppro = "SELECT * FROM approvisionnements WHERE id = :id FOR UPDATE";
-            $approRow = Database::executeQuery($sqlAppro, ['id' => $approId], true);
-            if (!$approRow) {
+
+            $appro = Database::executeQuery($sqlAppro, ['id' => $approId], true);
+
+            if (!$appro) {
                 throw new Exception("Approvisionnement introuvable.");
             }
 
@@ -143,84 +137,46 @@ class ApprovisionnementRepository
 
             foreach ($lignes as $ligne) {
                 $ligneId = $ligne->getId();
-                $qteRecue = isset($quantitesRecues[$ligneId]) ? (int)$quantitesRecues[$ligneId] : $ligne->getQuantiteAppro();
-                if ($qteRecue < 0) $qteRecue = 0;
 
-                Database::executeUpdate("UPDATE lignes_approvisionnement SET quantite_recue = :qte WHERE id = :id", [
-                    'qte' => $qteRecue,
-                    'id' => $ligneId
-                ]);
+                $ancienneQte = $ligne->getQuantiteRecue();
 
-                if ($qteRecue > 0) {
-                    Database::executeUpdate("UPDATE produits SET stock_initial = stock_initial + :qte WHERE id = :id", [
-                        'qte' => $qteRecue,
-                        'id' => $ligne->getProduitId()
-                    ]);
+                $qteRecue = (int)($quantitesDemandees[$ligneId] ?? 0);
+
+                if ($qteRecue <= 0) {
+                    throw new Exception("la quantite doit etre superrieur à 0");
                 }
+
+                if ($qteRecue > $ligne->getQuantiteAppro()) {
+                    throw new Exception("La quantité reçue ne peut pas dépasser la quantité commandée.");
+                }
+
+                if ($qteRecue === $ancienneQte) {
+                    continue;
+                }
+
+                Database::executeUpdate(
+                    "UPDATE lignes_approvisionnement SET quantite_recue = :qte WHERE id = :id",
+                    ['qte' => $qteRecue, 'id' => $ligneId]
+                );
+                $difference = $qteRecue - $ancienneQte;
+
+                Database::executeUpdate(
+                    "UPDATE produits SET stock_initial = stock_initial + :qte WHERE id = :id",
+                    ['qte' => $difference, 'id' => $ligne->getProduitId()]
+                );
             }
 
-            Database::executeUpdate("UPDATE approvisionnements SET date_reception = CURRENT_DATE WHERE id = :id", [
-                'id' => $approId
-            ]);
+            Database::executeUpdate("UPDATE approvisionnements SET date_reception = CURRENT_DATE WHERE id = :id", ['id' => $approId]);
 
-            if ($startedTx && $pdo->inTransaction()) {
-                $pdo->commit();
-            }
+            $pdo->commit();
+
             return true;
         } catch (Throwable $e) {
-            if ($startedTx && $pdo->inTransaction()) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
         }
-    }
-
-    public static function selectAll(): array
-    {
-        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
-                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
-                FROM approvisionnements a
-                JOIN fournisseurs f ON f.id = a.fournisseur_id
-                ORDER BY a.id DESC";
-
-        $results = Database::query($sql, false);
-        return (!empty($results) && is_array($results)) ? array_map(function ($row) {
-            $appro = Approvisionnement::toEntity($row);
-            $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
-            return $appro;
-        }, $results) : [];
-    }
-
-    public static function selectById(int $id): ?Approvisionnement
-    {
-        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
-                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
-                FROM approvisionnements a
-                JOIN fournisseurs f ON f.id = a.fournisseur_id
-                WHERE a.id = :id";
-
-        $row = Database::executeQuery($sql, ['id' => $id], true);
-        if (!$row) return null;
-
-        $appro = Approvisionnement::toEntity($row);
-        $appro->setLignes(self::selectLignesByApproId($id));
-        return $appro;
-    }
-
-    public static function selectByReferenceBl(string $referenceBl): ?Approvisionnement
-    {
-        $sql = "SELECT a.id AS appro_id, a.id, a.reference_bl, a.cout_achat, a.date_appro, a.date_reception, a.fournisseur_id, a.utilisateur_id,
-                       f.id AS fournisseur_id, f.nom AS fournisseur_nom, f.email AS fournisseur_email, f.telephone AS fournisseur_telephone, f.adresse AS fournisseur_adresse
-                FROM approvisionnements a
-                JOIN fournisseurs f ON f.id = a.fournisseur_id
-                WHERE a.reference_bl = :reference_bl LIMIT 1";
-
-        $row = Database::executeQuery($sql, ['reference_bl' => $referenceBl], true);
-        if (!$row) return null;
-
-        $appro = Approvisionnement::toEntity($row);
-        $appro->setLignes(self::selectLignesByApproId((int)$appro->getId()));
-        return $appro;
     }
 
     public static function selectLignesByApproId(int $approId): array
